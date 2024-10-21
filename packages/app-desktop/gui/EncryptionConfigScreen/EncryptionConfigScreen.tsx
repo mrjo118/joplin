@@ -18,6 +18,7 @@ import CommandService from '@joplin/lib/services/CommandService';
 import { PublicPrivateKeyPair } from '@joplin/lib/services/e2ee/ppk';
 import ToggleAdvancedSettingsButton from '../ConfigScreen/controls/ToggleAdvancedSettingsButton';
 import MacOSMissingPasswordHelpLink from '../ConfigScreen/controls/MissingPasswordHelpLink';
+import bridge from '../../services/bridge';
 
 interface Props {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -206,7 +207,7 @@ const EncryptionConfigScreen = (props: Props) => {
 
 		if (hasMasterPassword && newEnabled) {
 			if (!(await masterPasswordIsValid(newPassword))) {
-				await dialogs.alert('Invalid password. Please try again. If you have forgotten your password you will need to reset it.');
+				await bridge().showErrorMessageBox('Invalid password. Please try again. If you have forgotten your password you will need to reset it.');
 				return;
 			}
 		}
