@@ -130,11 +130,13 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 		const shouldSetIgnoreTlsErrors = this.state.changedSettingKeys.includes('net.ignoreTlsErrors');
 
 		const done = await shared.saveSettings(this);
-		if (!done) return;
+		if (!done) return false;
 
 		if (shouldSetIgnoreTlsErrors) {
 			await setIgnoreTlsErrors(Setting.value('net.ignoreTlsErrors'));
 		}
+
+		return true;
 	};
 
 	private syncStatusButtonPress_ = () => {
@@ -262,22 +264,21 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 		return this.state.changedSettingKeys.length > 0;
 	}
 
-	private async promptSaveChanges(): Promise<void> {
+	private async promptSaveChanges(): Promise<boolean> {
 		if (this.hasUnsavedChanges()) {
 			const response = await shim.showMessageBox(_('There are unsaved changes.'), {
 				buttons: [_('Save changes'), _('Discard changes')],
 			});
 			if (response === 0) {
-				await this.saveButton_press();
+				return await this.saveButton_press();
 			}
 		}
+
+		return true;
 	}
 
 	private handleNavigateToNewScreen = async (): Promise<boolean> => {
-		await this.promptSaveChanges();
-
-		// Continue navigation
-		return false;
+		return !(await this.promptSaveChanges());
 	};
 
 	private handleBackButtonPress = (): boolean => {
@@ -300,8 +301,10 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 
 		if (this.hasUnsavedChanges()) {
 			void (async () => {
-				await this.promptSaveChanges();
-				await goBack();
+				const result = await this.promptSaveChanges();
+				if (result) {
+					await goBack();
+				}
 			})();
 			return true;
 		}

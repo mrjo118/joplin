@@ -5,7 +5,6 @@ import { View, Text, TextInput } from 'react-native';
 import Setting, { AppType } from '@joplin/lib/models/Setting';
 import Dropdown from '../../Dropdown';
 import { ConfigScreenStyles } from './configScreenStyles';
-import Slider from '@react-native-community/slider';
 import SettingsToggle from './SettingsToggle';
 import FileSystemPathSelector from './FileSystemPathSelector';
 import shim from '@joplin/lib/shim';
@@ -92,33 +91,31 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 			/>
 		);
 	} else if (md.type === Setting.TYPE_INT) {
-		const unitLabel = md.unitLabel ? md.unitLabel(props.value) : props.value;
-		const minimum = 'minimum' in md ? md.minimum : 0;
-		const maximum = 'maximum' in md ? md.maximum : 10;
-		const label = md.label();
+		const value = props.value?.toString();
+		const label = md.unitLabel?.toString() !== undefined ? `${md.label()} (${md.unitLabel(md.value)})` : `${md.label()}`;
 
-		// Note: Do NOT add the minimumTrackTintColor and maximumTrackTintColor props
-		// on the Slider as they are buggy and can crash the app on certain devices.
-		// https://github.com/laurent22/joplin/issues/2733
-		// https://github.com/react-native-community/react-native-slider/issues/161
 		return (
-			<View key={props.settingId} style={styleSheet.settingContainer}>
-				<Text key="label" style={styleSheet.settingText} nativeID={labelId}>
-					{label}
-				</Text>
-				<View style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-					<Text style={styleSheet.sliderUnits}>{unitLabel}</Text>
-					<Slider
+			<View key={props.settingId} style={{ flexDirection: 'column', borderBottomWidth: 1, borderBottomColor: theme.dividerColor }}>
+				<View key={props.settingId} style={containerStyle}>
+					<Text key="label" style={styleSheet.settingText}>
+						{label}
+					</Text>
+					<TextInput
+						keyboardType="numeric"
+						autoCorrect={false}
+						autoComplete="off"
+						selectionColor={theme.textSelectionColor}
+						keyboardAppearance={theme.keyboardAppearance}
+						autoCapitalize="none"
 						key="control"
-						style={{ flex: 1 }}
-						step={md.step}
-						minimumValue={minimum}
-						maximumValue={maximum}
-						value={props.value}
-						onValueChange={newValue => void props.updateSettingValue(props.settingId, newValue)}
-						accessibilityHint={label}
+						style={styleSheet.settingControl}
+						value={value}
+						onChangeText={newValue => props.updateSettingValue(props.settingId, newValue?.replace(/[^0-9-]/g, ''))}
+						maxLength={15}
+						secureTextEntry={!!md.secure}
 					/>
 				</View>
+				{descriptionComp}
 			</View>
 		);
 	} else if (md.type === Setting.TYPE_STRING) {
