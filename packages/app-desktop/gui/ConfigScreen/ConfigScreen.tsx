@@ -140,8 +140,10 @@ class ConfigScreenComponent extends React.Component<any, any> {
 	public async switchSection(name: string) {
 		const section = this.sectionByName(name);
 		let screenName = '';
-		if (section.isScreen) {
-			screenName = section.name;
+		if (section.isScreen || name === 'plugins') {
+			if (section.isScreen) {
+				screenName = section.name;
+			}
 
 			if (this.hasChanges()) {
 				const ok = bridge().showConfirmMessageBox(_('This will open a new screen. Save your current changes?'));
