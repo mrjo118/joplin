@@ -345,8 +345,11 @@ function NoteEditor(props: Props, ref: any) {
 
 		automatchBraces: false,
 		ignoreModifiers: false,
+		autocompleteMarkup: Setting.value('editor.autocompleteMarkup'),
 
 		indentWithTabs: true,
+
+		editorLabel: _('Markdown editor'),
 	}), [props.themeId, props.readOnly]);
 
 	const injectedJavaScript = `

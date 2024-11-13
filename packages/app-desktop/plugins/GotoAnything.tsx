@@ -15,7 +15,7 @@ import ItemList from '../gui/ItemList';
 import HelpButton from '../gui/HelpButton';
 import { surroundKeywords, nextWhitespaceIndex, removeDiacritics } from '@joplin/lib/string-utils';
 import { mergeOverlappingIntervals } from '@joplin/lib/ArrayUtils';
-import markupLanguageUtils from '../utils/markupLanguageUtils';
+import markupLanguageUtils from '@joplin/lib/utils/markupLanguageUtils';
 import focusEditorIfEditorCommand from '@joplin/lib/services/commands/focusEditorIfEditorCommand';
 import Logger from '@joplin/utils/Logger';
 import { MarkupLanguage, MarkupToHtml } from '@joplin/renderer';
@@ -23,6 +23,7 @@ import Resource from '@joplin/lib/models/Resource';
 import { NoteEntity, ResourceEntity } from '@joplin/lib/services/database/types';
 import Dialog from '../gui/Dialog';
 import AsyncActionQueue from '@joplin/lib/AsyncActionQueue';
+import { htmlentities } from '@joplin/utils/html';
 
 const logger = Logger.create('GotoAnything');
 
@@ -555,7 +556,7 @@ class DialogComponent extends React.PureComponent<Props, State> {
 		};
 
 		const titleHtml = item.fragments
-			? `<span style="font-weight: bold; color: ${theme.color};">${item.title}</span>`
+			? `<span style="font-weight: bold; color: ${theme.color};">${htmlentities(item.title)}</span>`
 			: wrapKeywordMatches(item.title);
 
 		const fragmentsHtml = !item.fragments ? null : wrapKeywordMatches(item.fragments);
@@ -636,7 +637,9 @@ class DialogComponent extends React.PureComponent<Props, State> {
 	}
 
 	private calculateMaxHeight(itemHeight: number) {
-		const maxItemCount = Math.floor((0.7 * window.innerHeight) / itemHeight);
+		const listContainer: HTMLElement|null = this.itemListRef.current?.container;
+		const containerWindow = listContainer?.ownerDocument?.defaultView ?? window;
+		const maxItemCount = Math.floor((0.7 * containerWindow.innerHeight) / itemHeight);
 		return maxItemCount * itemHeight;
 	}
 

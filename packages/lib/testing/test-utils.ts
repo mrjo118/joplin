@@ -286,6 +286,7 @@ async function switchClient(id: number, options: any = null) {
 	BaseItem.encryptionService_ = encryptionServices_[id];
 	Resource.encryptionService_ = encryptionServices_[id];
 	BaseItem.revisionService_ = revisionServices_[id];
+	ResourceFetcher.instance_ = resourceFetchers_[id];
 
 	await Setting.reset();
 	Setting.settingFilename = settingFilename(id);
@@ -297,7 +298,7 @@ async function switchClient(id: number, options: any = null) {
 	Setting.setConstant('pluginDir', pluginDir(id));
 	Setting.setConstant('isSubProfile', false);
 
-	await loadKeychainServiceAndSettings([options.keychainEnabled ? KeychainServiceDriverNode : KeychainServiceDriverDummy]);
+	await loadKeychainServiceAndSettings(options.keychainEnabled ? [KeychainServiceDriverNode] : []);
 
 	Setting.setValue('sync.target', syncTargetId());
 	Setting.setValue('sync.wipeOutFailSafe', false); // To keep things simple, always disable fail-safe unless explicitly set in the test itself
@@ -361,7 +362,7 @@ async function setupDatabase(id: number = null, options: any = null) {
 	if (databases_[id]) {
 		BaseModel.setDb(databases_[id]);
 		await clearDatabase(id);
-		await loadKeychainServiceAndSettings([options.keychainEnabled ? KeychainServiceDriverNode : KeychainServiceDriverDummy]);
+		await loadKeychainServiceAndSettings(options.keychainEnabled ? [KeychainServiceDriverNode] : []);
 		Setting.setValue('sync.target', syncTargetId());
 		return;
 	}

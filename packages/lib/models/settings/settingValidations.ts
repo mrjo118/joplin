@@ -3,6 +3,7 @@ import shim from '../../shim';
 import BaseItem from '../BaseItem';
 import Resource from '../Resource';
 import Setting from '../Setting';
+import { SettingItemType } from './types';
 
 // Should return an error message if there's a problem, and an empty string if not.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -37,24 +38,47 @@ const validations: Record<string, ValidationHandler> = {
 
 		return '';
 	},
+};
 
+const validateInteger = async (key: string, newValue: string) => {
+	const md = Setting.settingMetadata(key);
+	const minimum = 'minimum' in md ? md.minimum : 0;
+	const maximum = 'maximum' in md ? md.maximum : 10;
+	const newValueInt = Math.floor(Number(newValue));
+
+	if (newValue === '' || isNaN(newValueInt) || newValueInt > maximum || newValueInt < minimum) {
+		return _('%s must be a valid integer between %s and %s', md.label(), minimum, maximum);
+	}
+
+	return '';
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
-const validateSetting = async (settingName: string, oldValue: any, newValue: any) => {
-	if (oldValue === newValue) return '';
-	if (!validations[settingName]) return '';
+const validateSetting = async (settingName: string, newValues: Record<string, any>) => {
+	const md = Setting.settingMetadata(settingName);
+	const oldValue = md.value;
+	const newValue = newValues[settingName];
 
+	// Type based validations
+	if (md.type === SettingItemType.Int) {
+		if (oldValue?.toString() === newValue?.toString()) return '';
+		const message = await validateInteger(settingName, newValue);
+		if (message !== '') return message;
+	} else {
+		if (oldValue === newValue) return '';
+	}
+
+	// Custom validations
+	if (!validations[settingName]) return '';
 	return await validations[settingName](oldValue, newValue);
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 export default async (settingKeys: string[], newValues: Record<string, any>) => {
 	for (const key of settingKeys) {
-		const oldValue = Setting.value(key);
-		const newValue = newValues[key];
-		const message = await validateSetting(key, oldValue, newValue);
-		return message;
+		const message = await validateSetting(key, newValues);
+		if (message !== '') return message;
 	}
+
 	return '';
 };

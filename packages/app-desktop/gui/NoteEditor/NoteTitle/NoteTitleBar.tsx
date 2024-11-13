@@ -1,34 +1,11 @@
 import * as React from 'react';
 import { _ } from '@joplin/lib/locale';
 import CommandService from '@joplin/lib/services/CommandService';
-import { ChangeEvent, useCallback, useRef } from 'react';
+import { ChangeEvent, useCallback, useContext, useRef } from 'react';
 import NoteToolbar from '../../NoteToolbar/NoteToolbar';
 import { buildStyle } from '@joplin/lib/theme';
 import time from '@joplin/lib/time';
-import styled from 'styled-components';
-
-const StyledRoot = styled.div`
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	padding-left: ${props => props.theme.editorPaddingLeft}px;
-
-	@media (max-width: 800px) {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-`;
-
-const InfoGroup = styled.div`
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-
-	@media (max-width: 800px) {
-		border-top: 1px solid ${props => props.theme.dividerColor};
-		width: 100%;
-	}
-`;
+import { WindowIdContext } from '../../NewWindowOrIFrame';
 
 interface Props {
 	themeId: number;
@@ -121,21 +98,25 @@ export default function NoteTitleBar(props: Props) {
 		return <span className="updated-time-label" style={styles.titleDate}>{time.formatMsToLocal(props.noteUserUpdatedTime)}</span>;
 	}
 
+	const windowId = useContext(WindowIdContext);
+
 	function renderNoteToolbar() {
 		return <NoteToolbar
 			themeId={props.themeId}
 			style={styles.toolbarStyle}
 			disabled={props.disabled}
+			windowId={windowId}
 		/>;
 	}
 
 	return (
-		<StyledRoot>
+		<div className='note-title-wrapper'>
 			<input
 				className="title-input"
 				type="text"
 				ref={props.titleInputRef}
 				placeholder={props.isProvisional ? (props.noteIsTodo ? _('Creating new to-do...') : _('Creating new note...')) : ''}
+				aria-label={props.isProvisional ? undefined : _('Note title')}
 				style={styles.titleInput}
 				readOnly={props.disabled}
 				onChange={props.onTitleChange}
@@ -144,10 +125,10 @@ export default function NoteTitleBar(props: Props) {
 				onBlur={onTitleBlur}
 				value={props.noteTitle}
 			/>
-			<InfoGroup>
+			<div className='note-title-info-group'>
 				{renderTitleBarDate()}
 				{renderNoteToolbar()}
-			</InfoGroup>
-		</StyledRoot>
+			</div>
+		</div>
 	);
 }

@@ -810,7 +810,10 @@ class Setting extends BaseModel {
 	public static formatValue(key: string | SettingItemType, value: any) {
 		const type = typeof key === 'string' ? this.settingMetadata(key).type : key;
 
-		if (type === SettingItemType.Int) return !value ? 0 : Math.floor(Number(value));
+		if (type === SettingItemType.Int) {
+			// Retain invalid values as a string, so they can be validated on save without modifying the user input as the user types
+			return value !== '' && !isNaN(value) ? Math.floor(Number(value)) : value;
+		}
 
 		if (type === SettingItemType.Bool) {
 			if (typeof value === 'string') {

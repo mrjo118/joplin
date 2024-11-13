@@ -130,11 +130,13 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 		const shouldSetIgnoreTlsErrors = this.state.changedSettingKeys.includes('net.ignoreTlsErrors');
 
 		const done = await shared.saveSettings(this);
-		if (!done) return;
+		if (!done) return false;
 
 		if (shouldSetIgnoreTlsErrors) {
 			await setIgnoreTlsErrors(Setting.value('net.ignoreTlsErrors'));
 		}
+
+		return true;
 	};
 
 	private syncStatusButtonPress_ = () => {
@@ -153,6 +155,10 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 
 	private logButtonPress_ = () => {
 		void NavService.go('Log');
+	};
+
+	private deletionLogButtonPress_ = () => {
+		void NavService.go('Log', { defaultFilter: 'DeleteAction' });
 	};
 
 	private manageSharesPress_ = () => {
@@ -258,22 +264,21 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 		return this.state.changedSettingKeys.length > 0;
 	}
 
-	private async promptSaveChanges(): Promise<void> {
+	private async promptSaveChanges(): Promise<boolean> {
 		if (this.hasUnsavedChanges()) {
 			const response = await shim.showMessageBox(_('There are unsaved changes.'), {
 				buttons: [_('Save changes'), _('Discard changes')],
 			});
 			if (response === 0) {
-				await this.saveButton_press();
+				return await this.saveButton_press();
 			}
 		}
+
+		return true;
 	}
 
 	private handleNavigateToNewScreen = async (): Promise<boolean> => {
-		await this.promptSaveChanges();
-
-		// Continue navigation
-		return false;
+		return !(await this.promptSaveChanges());
 	};
 
 	private handleBackButtonPress = (): boolean => {
@@ -296,8 +301,10 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 
 		if (this.hasUnsavedChanges()) {
 			void (async () => {
-				await this.promptSaveChanges();
-				await goBack();
+				const result = await this.promptSaveChanges();
+				if (result) {
+					await goBack();
+				}
 			})();
 			return true;
 		}
@@ -543,6 +550,7 @@ class ConfigScreenComponent extends BaseScreenComponent<ConfigScreenProps, Confi
 			addSettingButton('profiles_buttons', _('Manage profiles'), this.manageProfilesButtonPress_);
 			addSettingButton('status_button', _('Sync Status'), this.syncStatusButtonPress_);
 			addSettingButton('log_button', _('Log'), this.logButtonPress_);
+			addSettingButton('deletion_log_button', _('Deletion log'), this.deletionLogButtonPress_);
 			addSettingButton('fix_search_engine_index', this.state.fixingSearchIndex ? _('Fixing search index...') : _('Fix search index'), this.fixSearchEngineIndexButtonPress_, { disabled: this.state.fixingSearchIndex, description: _('Use this to rebuild the search index if there is a problem with search. It may take a long time depending on the number of notes.') });
 			const syncTargetInfo = SyncTargetRegistry.infoById(this.state.settings['sync.target']);
 			if (syncTargetInfo.supportsShare) {

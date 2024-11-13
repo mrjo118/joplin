@@ -224,7 +224,8 @@ const Button = React.forwardRef((props: Props, ref: any) => {
 	function renderIcon() {
 		if (!props.iconName) return null;
 		return <StyledIcon
-			aria-label={props.iconLabel ?? ''}
+			aria-label={props.iconLabel ?? undefined}
+			aria-hidden={!props.iconLabel}
 			animation={props.iconAnimation}
 			mr={iconOnly ? '0' : '6px'}
 			color={props.color}
@@ -256,6 +257,9 @@ const Button = React.forwardRef((props: Props, ref: any) => {
 			iconOnly={iconOnly}
 			onClick={onClick}
 
+			// When there's no title, the button needs a label. In this case, fall back
+			// to the tooltip.
+			aria-label={props.title ? undefined : props.tooltip}
 			aria-disabled={props.disabled}
 			aria-expanded={props['aria-expanded']}
 			aria-controls={props['aria-controls']}

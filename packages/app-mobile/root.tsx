@@ -21,7 +21,6 @@ import ShareExtension from './utils/ShareExtension';
 import handleShared from './utils/shareHandler';
 import uuid from '@joplin/lib/uuid';
 import { loadKeychainServiceAndSettings } from '@joplin/lib/services/SettingUtils';
-import KeychainServiceDriverMobile from '@joplin/lib/services/keychain/KeychainServiceDriver.mobile';
 import { _, setLocale } from '@joplin/lib/locale';
 import SyncTargetJoplinServer from '@joplin/lib/SyncTargetJoplinServer';
 import SyncTargetJoplinCloud from '@joplin/lib/SyncTargetJoplinCloud';
@@ -36,6 +35,7 @@ const DropdownAlert = require('react-native-dropdownalert').default;
 const AlarmServiceDriver = require('./services/AlarmServiceDriver').default;
 const SafeAreaView = require('./components/SafeAreaView');
 const { connect, Provider } = require('react-redux');
+import fastDeepEqual = require('fast-deep-equal');
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import BackButtonService from './services/BackButtonService';
 import NavService from '@joplin/lib/services/NavService';
@@ -89,6 +89,8 @@ import JoplinCloudLoginScreen from './components/screens/JoplinCloudLoginScreen'
 
 import SyncTargetNone from '@joplin/lib/SyncTargetNone';
 
+
+
 SyncTargetRegistry.addClass(SyncTargetNone);
 SyncTargetRegistry.addClass(SyncTargetOneDrive);
 SyncTargetRegistry.addClass(SyncTargetNextcloud);
@@ -111,6 +113,7 @@ import { loadMasterKeysFromSettings, migrateMasterPassword } from '@joplin/lib/s
 import { setRSA } from '@joplin/lib/services/e2ee/ppk';
 import RSA from './services/e2ee/RSA.react-native';
 import { runIntegrationTests as runRsaIntegrationTests } from '@joplin/lib/services/e2ee/ppkTestUtils';
+import { runIntegrationTests as runCryptoIntegrationTests } from '@joplin/lib/services/e2ee/cryptoTestUtils';
 import { Theme, ThemeAppearance } from '@joplin/lib/themes/type';
 import ProfileSwitcher from './components/ProfileSwitcher/ProfileSwitcher';
 import ProfileEditor from './components/ProfileSwitcher/ProfileEditor';
@@ -301,12 +304,27 @@ const appReducer = (state = appDefaultState, action: any) => {
 				const currentRoute = state.route;
 
 				if (!historyGoingBack && historyCanGoBackTo(currentRoute)) {
-					navHistory.push(currentRoute);
+					const previousRoute = navHistory.length && navHistory[navHistory.length - 1];
+					const isDifferentRoute = !previousRoute || !fastDeepEqual(navHistory[navHistory.length - 1], currentRoute);
+
+					// Avoid multiple consecutive duplicate screens in the navigation history -- these can make
+					// pressing "back" seem to have no effect.
+					if (isDifferentRoute) {
+						navHistory.push(currentRoute);
+					}
+				}
+
+				if (action.clearHistory) {
+					navHistory.splice(0, navHistory.length);
 				}
 
 				newState = { ...state };
 
 				newState.selectedNoteHash = '';
+
+				if (action.routeName === 'Search') {
+					newState.notesParentType = 'Search';
+				}
 
 				if ('noteId' in action) {
 					newState.selectedNoteIds = action.noteId ? [action.noteId] : [];
@@ -344,6 +362,8 @@ const appReducer = (state = appDefaultState, action: any) => {
 
 				newState.route = action;
 				newState.historyCanGoBack = !!navHistory.length;
+
+				logger.debug('Navigated to route:', newState.route?.routeName, 'with notesParentType:', newState.notesParentType);
 			}
 			break;
 
@@ -596,7 +616,7 @@ async function initialize(dispatch: Dispatch) {
 		reg.logger().info('Database is ready.');
 		reg.logger().info('Loading settings...');
 
-		await loadKeychainServiceAndSettings([KeychainServiceDriverMobile]);
+		await loadKeychainServiceAndSettings([]);
 		await migrateMasterPassword();
 
 		if (!Setting.value('clientId')) Setting.setValue('clientId', uuid.create());
@@ -819,8 +839,9 @@ async function initialize(dispatch: Dispatch) {
 		if (Platform.OS !== 'web') {
 			await runRsaIntegrationTests();
 		} else {
-			logger.info('Skipping RSA tests -- not supported on mobile.');
+			logger.info('Skipping encryption tests -- not supported on web.');
 		}
+		await runCryptoIntegrationTests();
 		await runOnDeviceFsDriverTests();
 	}
 
@@ -945,6 +966,21 @@ class AppComponent extends React.Component {
 					state: 'error',
 				});
 				throw error;
+			}
+
+			// https://reactnative.dev/docs/linking#handling-deep-links
+			//
+			// The handler added with Linking.addEventListener() is only triggered when app is already open.
+			//
+			// When the app is not already open and the deep link triggered app launch,
+			// the URL can be obtained with Linking.getInitialURL().
+			//
+			// We only save the URL here since we want to show the content only
+			// after biometrics check is passed or known disabled.
+			const url = await Linking.getInitialURL();
+			if (url && isCallbackUrl(url)) {
+				logger.info('received initial callback url: ', url);
+				this.callbackUrl = url;
 			}
 
 			const loadedSensorInfo = await sensorInfo();

@@ -377,6 +377,20 @@
 			contentElement.scrollTop = scrollTop;
 		}
 
+		const rewriteFileUrls = (accessKey) => {
+			if (!accessKey) return;
+
+			// To allow accessing local files from the viewer's non-file URL, file:// URLs are re-written
+			// to joplin-content:// URLs:
+			const mediaElements = document.querySelectorAll('video[src], audio[src], source[src], img[src]');
+			for (const element of mediaElements) {
+				if (element.src?.startsWith('file:')) {
+					const newUrl = element.src.replace(/^file:\/\//, 'joplin-content://file-media/');
+					element.src = `${newUrl}?access-key=${accessKey}`;
+				}
+			}
+		};
+
 		ipc.setHtml = (event) => {
 			const html = event.html;
 
@@ -387,6 +401,10 @@
 			alreadyAllImagesLoaded = false;
 
 			contentElement.innerHTML = html;
+
+			if (html.includes('file://')) {
+				rewriteFileUrls(event.options.mediaAccessKey);
+			}
 
 			scrollmap.create(event.options.markupLineCount);
 			if (typeof event.options.percent !== 'number') {
@@ -733,6 +751,13 @@
 		}));
 
 		document.addEventListener('click', webviewLib.logEnabledEventHandler(e => {
+			// Links should all have custom click handlers. Allowing Electron to load custom links
+			// can cause security issues, particularly if these links have the same domain as the
+			// top-level page.
+			if (e.target.hasAttribute('href')) {
+				e.preventDefault();
+			}
+
 			document.querySelectorAll('.media-pdf').forEach(element => {
 				if(!!element.contentWindow){
 					element.contentWindow.postMessage({

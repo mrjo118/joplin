@@ -1,7 +1,6 @@
 import shim from '@joplin/lib/shim';
 import Setting from '@joplin/lib/models/Setting';
 import Note from '@joplin/lib/models/Note';
-import BaseModel from '@joplin/lib/BaseModel';
 import Resource from '@joplin/lib/models/Resource';
 const bridge = require('@electron/remote').require('./bridge').default;
 import ResourceFetcher from '@joplin/lib/services/ResourceFetcher';
@@ -26,43 +25,6 @@ export async function handleResourceDownloadMode(noteBody: string) {
 		const resourceIds = await Note.linkedResourceIds(noteBody);
 		await ResourceFetcher.instance().markForDownload(resourceIds);
 	}
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
-let resourceCache_: any = {};
-
-export function clearResourceCache() {
-	resourceCache_ = {};
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
-export async function attachedResources(noteBody: string): Promise<any> {
-	if (!noteBody) return {};
-	const resourceIds = await Note.linkedItemIdsByType(BaseModel.TYPE_RESOURCE, noteBody);
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
-	const output: any = {};
-	for (let i = 0; i < resourceIds.length; i++) {
-		const id = resourceIds[i];
-
-		if (resourceCache_[id]) {
-			output[id] = resourceCache_[id];
-		} else {
-			const resource = await Resource.load(id);
-			const localState = await Resource.localState(resource);
-
-			const o = {
-				item: resource,
-				localState: localState,
-			};
-
-			// eslint-disable-next-line require-atomic-updates
-			resourceCache_[id] = o;
-			output[id] = o;
-		}
-	}
-
-	return output;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -218,7 +180,7 @@ export async function processPastedHtml(html: string, htmlToMd: HtmlToMarkdownHa
 	// TinyMCE, but lost once the note is saved. So here we convert the HTML to Markdown then back
 	// to HTML to ensure that the content we paste will be handled correctly by the app.
 	if (htmlToMd && mdToHtml) {
-		const md = await htmlToMd(MarkupLanguage.Markdown, html, '');
+		const md = await htmlToMd(MarkupLanguage.Markdown, html, '', { preserveColorStyles: Setting.value('editor.pastePreserveColors') });
 		html = (await mdToHtml(MarkupLanguage.Markdown, md, markupRenderOptions({ bodyOnly: true }))).html;
 
 		// When plugins that add to the end of rendered content are installed, bodyOnly can
