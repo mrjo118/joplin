@@ -56,7 +56,7 @@ const validateInteger = async (key: string, newValue: string) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 const validateSetting = async (settingName: string, newValues: Record<string, any>) => {
 	const md = Setting.settingMetadata(settingName);
-	const oldValue = md.value;
+	const oldValue = Setting.value(settingName); // Needs to be set this way, rather than from Setting.settingMetadata
 	const newValue = newValues[settingName];
 
 	// Type based validations
