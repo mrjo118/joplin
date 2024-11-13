@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { UpdateSettingValueCallback } from './types';
-import { View, Text, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import Setting, { AppType } from '@joplin/lib/models/Setting';
 import Dropdown from '../../Dropdown';
 import { ConfigScreenStyles } from './configScreenStyles';
