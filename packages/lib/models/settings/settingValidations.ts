@@ -60,7 +60,7 @@ const validateSetting = async (settingName: string, newValues: Record<string, an
 	const newValue = newValues[settingName];
 
 	// Type based validations
-	if (md.type === SettingItemType.Int) {
+	if (md.type === SettingItemType.Int && !md.isEnum) {
 		if (oldValue?.toString() === newValue?.toString()) return '';
 		const message = await validateInteger(settingName, newValue);
 		if (message !== '') return message;
