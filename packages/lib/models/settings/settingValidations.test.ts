@@ -32,4 +32,18 @@ describe('settingValidations', () => {
 		}
 		expect(await settingValidations(['sync.target'], { 'sync.target': newSyncTargetId })).toBe('');
 	});
+
+	test.each(
+		['', 0, -1, '1-1', 'aaa', 731, 1e20],
+	)('should return error message for invalid integer values', async (input) => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': input });
+		expect(value).toBe('Keep note history for must be a valid integer between 1 and 730');
+	});
+
+	test.each(
+		[1, 300, 730],
+	)('should return empty string for valid integer values', async (input) => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': input });
+		expect(value).toBe('');
+	});
 });

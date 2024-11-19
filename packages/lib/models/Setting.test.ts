@@ -456,4 +456,40 @@ describe('models/Setting', () => {
 			await Setting.saveAll();
 		}
 	});
+
+	test.each([
+		['1', 1],
+		['1.5', 1],
+		['-1', -1],
+		['+1', 1],
+		['', ''],
+		['aaa', 'aaa'],
+		['1-1', '1-1'],
+		['1e3', 1000],
+		['1e20', 1e20],
+		['99999999999999999999', 1e20], // Value exceeds integer limit, output exhibits a rounding issue but will fail max value validation on save
+	])('should format integer type setting as an integer if it is a number that can be parsed, otherwise retain a string value for validation on save', (async (input, expectedOutput) => {
+		const value = Setting.formatValue('revisionService.ttlDays', input);
+		expect(value).toBe(expectedOutput);
+	}));
+
+	test.each([
+		['1', 1],
+		['1.5', 1],
+		['-1', -1],
+		['', 0],
+	])('should always format integer type setting as an integer when it is an enum', (async (input, expectedOutput) => {
+		const value = Setting.formatValue('sync.target', input);
+		expect(value).toBe(expectedOutput);
+	}));
+
+	test.each([
+		['1', 1],
+		['1.5', 1],
+		['-1', -1],
+		['', 0],
+	])('should always format integer type setting as an integer key is a SettingItemType', (async (input, expectedOutput) => {
+		const value = Setting.formatValue(SettingItemType.Int, input);
+		expect(value).toBe(expectedOutput);
+	}));
 });
