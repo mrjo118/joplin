@@ -926,6 +926,12 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 			storage: SettingStorage.File,
 		},
 
+		'plugins.shownEditorViewIds': {
+			value: [] as string[],
+			type: SettingItemType.Array,
+			public: false,
+		},
+
 		// Deprecated - use markdown.plugin.*
 		'markdown.softbreaks': { storage: SettingStorage.File, isGlobal: true, value: false, type: SettingItemType.Bool, public: false, appTypes: [AppType.Mobile, AppType.Desktop] },
 		'markdown.typographer': { storage: SettingStorage.File, isGlobal: true, value: false, type: SettingItemType.Bool, public: false, appTypes: [AppType.Mobile, AppType.Desktop] },
@@ -1601,17 +1607,6 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 			description: () => 'Enable this feature to receive notifications about updates and install them instead of manually downloading them. Restart app to start receiving auto-updates.',
 			show: () => shim.isWindows() || shim.isMac(),
 			section: 'application',
-			isGlobal: true,
-		},
-
-		'featureFlag.syncLockEnabled': {
-			value: true,
-			type: SettingItemType.Bool,
-			public: true,
-			storage: SettingStorage.File,
-			label: () => 'Enable sync locks',
-			description: () => 'This is an experimental setting to disable sync locks',
-			section: 'sync',
 			isGlobal: true,
 		},
 
