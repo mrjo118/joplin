@@ -142,3 +142,8 @@ qrcode
 Rocketbook
 datamatrix
 nosniff
+CNIL
+setsize
+Comprar
+seguidores
+devbox

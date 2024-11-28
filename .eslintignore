@@ -588,6 +588,7 @@ packages/app-mobile/components/CameraView/types.js
 packages/app-mobile/components/CameraView/utils/fitRectIntoBounds.js
 packages/app-mobile/components/CameraView/utils/useBarcodeScanner.js
 packages/app-mobile/components/Checkbox.js
+packages/app-mobile/components/DialogManager/PromptButton.js
 packages/app-mobile/components/DialogManager/PromptDialog.js
 packages/app-mobile/components/DialogManager/hooks/useDialogControl.js
 packages/app-mobile/components/DialogManager/index.js
@@ -766,6 +767,7 @@ packages/app-mobile/components/screens/UpgradeSyncTargetScreen.js
 packages/app-mobile/components/screens/dropbox-login.js
 packages/app-mobile/components/screens/encryption-config.js
 packages/app-mobile/components/screens/status.js
+packages/app-mobile/components/screens/tags.js
 packages/app-mobile/components/side-menu-content.js
 packages/app-mobile/components/testing/TestProviderStack.js
 packages/app-mobile/components/voiceTyping/VoiceTypingDialog.js
@@ -783,6 +785,8 @@ packages/app-mobile/services/profiles/index.js
 packages/app-mobile/services/voiceTyping/VoiceTyping.js
 packages/app-mobile/services/voiceTyping/utils/splitWhisperText.test.js
 packages/app-mobile/services/voiceTyping/utils/splitWhisperText.js
+packages/app-mobile/services/voiceTyping/utils/unzip.android.js
+packages/app-mobile/services/voiceTyping/utils/unzip.js
 packages/app-mobile/services/voiceTyping/vosk.android.js
 packages/app-mobile/services/voiceTyping/vosk.js
 packages/app-mobile/services/voiceTyping/whisper.js
@@ -815,6 +819,7 @@ packages/app-mobile/utils/fs-driver/testUtil/createFilesFromPathRecord.js
 packages/app-mobile/utils/fs-driver/testUtil/verifyDirectoryMatches.js
 packages/app-mobile/utils/getPackageInfo.js
 packages/app-mobile/utils/getVersionInfoText.js
+packages/app-mobile/utils/hooks/useOnLongPressProps.js
 packages/app-mobile/utils/hooks/useReduceMotionEnabled.js
 packages/app-mobile/utils/image/fileToImage.web.js
 packages/app-mobile/utils/image/getImageDimensions.js
@@ -913,6 +918,7 @@ packages/editor/CodeMirror/utils/growSelectionToNode.js
 packages/editor/CodeMirror/utils/handlePasteEvent.js
 packages/editor/CodeMirror/utils/isCursorAtBeginning.js
 packages/editor/CodeMirror/utils/isInSyntaxNode.js
+packages/editor/CodeMirror/utils/keyUpHandlerExtension.js
 packages/editor/CodeMirror/utils/overwriteModeExtension.test.js
 packages/editor/CodeMirror/utils/overwriteModeExtension.js
 packages/editor/CodeMirror/utils/searchExtension.js
