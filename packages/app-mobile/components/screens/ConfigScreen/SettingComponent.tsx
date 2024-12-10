@@ -9,7 +9,7 @@ import SettingsToggle from './SettingsToggle';
 import FileSystemPathSelector from './FileSystemPathSelector';
 import shim from '@joplin/lib/shim';
 import { themeStyle } from '../../global-style';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 interface Props {
 	settingId: string;
@@ -40,6 +40,7 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 	const containerStyle = props.styles.getContainerStyle(!!settingDescription);
 
 	const labelId = useId();
+	const [valueState, setValueState] = useState(props.value?.toString());
 
 	if (md.isEnum) {
 		const value = props.value?.toString();
@@ -91,7 +92,6 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 			/>
 		);
 	} else if (md.type === Setting.TYPE_INT) {
-		const value = props.value?.toString();
 		const label = md.unitLabel?.toString() !== undefined ? `${md.label()} (${md.unitLabel(md.value)})` : `${md.label()}`;
 
 		return (
@@ -109,8 +109,11 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 						autoCapitalize="none"
 						key="control"
 						style={styleSheet.settingControl}
-						value={value}
-						onChangeText={newValue => props.updateSettingValue(props.settingId, newValue?.replace(/[^0-9-]/g, ''))}
+						value={valueState}
+						onChangeText={newValue => {
+							setValueState(newValue);
+							void props.updateSettingValue(props.settingId, Number.isInteger(Number(newValue)) ? newValue : ''); // Prevent invalid values being mapped to 0
+						}}
 						maxLength={15}
 						secureTextEntry={!!md.secure}
 					/>

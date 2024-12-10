@@ -1,7 +1,7 @@
 import Setting, { AppType, SettingItemSubType } from '@joplin/lib/models/Setting';
 import { themeStyle } from '@joplin/lib/theme';
 import * as React from 'react';
-import { useCallback, useId } from 'react';
+import { useCallback, useId, useState } from 'react';
 import control_PluginsStates from './plugins/PluginsStates';
 import bridge from '../../../services/bridge';
 import { _ } from '@joplin/lib/locale';
@@ -70,6 +70,7 @@ const SettingComponent: React.FC<Props> = props => {
 	const inputId = useId();
 	const descriptionId = useId();
 	const descriptionComp = <SettingDescription id={descriptionId} text={descriptionText}/>;
+	const [valueState, setValueState] = useState(props.value?.toString());
 
 	if (key in settingKeyToControl) {
 		const CustomSettingComponent = settingKeyToControl[key];
@@ -321,10 +322,9 @@ const SettingComponent: React.FC<Props> = props => {
 			);
 		}
 	} else if (md.type === Setting.TYPE_INT) {
-		const value = props.value as number;
-
 		const onNumChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-			updateSettingValue(key, event.target.value);
+			setValueState(event.target.value);
+			updateSettingValue(key, Number.isInteger(Number(event.target.value)) ? event.target.value : ''); // Prevent invalid values being mapped to 0
 		};
 
 		const label = [md.label()];
@@ -336,7 +336,7 @@ const SettingComponent: React.FC<Props> = props => {
 				<input
 					type="number"
 					style={textInputBaseStyle}
-					value={value}
+					value={valueState}
 					onChange={onNumChange}
 					min={md.minimum}
 					max={md.maximum}

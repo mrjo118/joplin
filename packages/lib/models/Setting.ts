@@ -811,9 +811,9 @@ class Setting extends BaseModel {
 		const type = typeof key === 'string' ? this.settingMetadata(key).type : key;
 
 		if (type === SettingItemType.Int) {
-			if (typeof key === 'string' && !this.settingMetadata(key).isEnum) {
-				// Retain invalid values as a string, so they can be validated on save without modifying the user input as the user types
-				return value !== '' && !isNaN(value) ? Math.floor(Number(value)) : value;
+			if (value === '') {
+				// Set empty string as null instead of zero, so that validations will fail
+				return null;
 			} else {
 				return !value ? 0 : Math.floor(Number(value));
 			}

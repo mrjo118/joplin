@@ -40,14 +40,21 @@ const validations: Record<string, ValidationHandler> = {
 	},
 };
 
-const validateInteger = async (key: string, newValue: string) => {
+const validateInteger = async (key: string, newValue: number) => {
 	const md = Setting.settingMetadata(key);
-	const minimum = 'minimum' in md ? md.minimum : 0;
-	const maximum = 'maximum' in md ? md.maximum : 10;
-	const newValueInt = Math.floor(Number(newValue));
+	const minimum = 'minimum' in md ? md.minimum : null;
+	const maximum = 'maximum' in md ? md.maximum : null;
 
-	if (newValue === '' || isNaN(newValueInt) || newValueInt > maximum || newValueInt < minimum) {
-		return _('%s must be a valid integer between %s and %s', md.label(), minimum, maximum);
+	if (newValue === null || isNaN(newValue)) {
+		return _('%s must be a valid whole number', md.label());
+	}
+
+	if (maximum !== null && newValue > maximum) {
+		return _('%s cannot be greater than %s', md.label(), maximum);
+	}
+
+	if (minimum !== null && newValue < minimum) {
+		return _('%s cannot be less than %s', md.label(), minimum);
 	}
 
 	return '';
@@ -58,14 +65,12 @@ const validateSetting = async (settingName: string, newValues: Record<string, an
 	const md = Setting.settingMetadata(settingName);
 	const oldValue = Setting.value(settingName); // Needs to be set this way, rather than from Setting.settingMetadata
 	const newValue = newValues[settingName];
+	if (oldValue === newValue) return '';
 
 	// Type based validations
 	if (md.type === SettingItemType.Int && !md.isEnum) {
-		if (oldValue?.toString() === newValue?.toString()) return '';
-		const message = await validateInteger(settingName, newValue);
+		const message = await validateInteger(settingName, newValue as number);
 		if (message !== '') return message;
-	} else {
-		if (oldValue === newValue) return '';
 	}
 
 	// Custom validations
