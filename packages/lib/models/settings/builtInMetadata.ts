@@ -668,6 +668,15 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 			storage: SettingStorage.File,
 			isGlobal: true,
 		},
+		'editor.toolbarButtons': {
+			value: [] as string[],
+			public: false,
+			type: SettingItemType.Array,
+			storage: SettingStorage.File,
+			isGlobal: true,
+			appTypes: [AppType.Mobile],
+			label: () => 'buttons included in the editor toolbar',
+		},
 		'notes.columns': {
 			value: defaultListColumns(),
 			public: false,
@@ -1576,7 +1585,7 @@ const builtInMetadata = (Setting: typeof SettingType) => {
 		'security.biometricsEnabled': {
 			value: false,
 			type: SettingItemType.Bool,
-			label: () => `${_('Use biometrics to secure access to the app')} (Beta)`,
+			label: () => `${_('Use biometrics to secure access to the app')}${shim.mobilePlatform() !== 'ios' ? ' (Beta)' : ''}`,
 			description: () => 'Important: This is a beta feature and it is not compatible with certain devices. If the app no longer starts after enabling this or is very slow to start, please uninstall and reinstall the app.',
 			show: () => shim.mobilePlatform() !== 'web',
 			public: true,
