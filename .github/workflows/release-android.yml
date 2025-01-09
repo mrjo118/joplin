@@ -6,7 +6,7 @@ on: [push, pull_request]
 
 jobs:
   AssembleRelease:
-    if: github.repository == 'laurent22/joplin'
+    if: github.repository == 'mrjo118/joplin'
     runs-on: ubuntu-latest
     steps:
       - name: Install Linux dependencies
@@ -40,4 +40,29 @@ jobs:
           cd packages/app-mobile/android
           sed -i -- 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/' app/build.gradle
           ./gradlew assembleRelease
-          
+
+      - name: version
+        run: echo "::set-output name=version::$(date +%s)"
+        id: version
+        
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: upload linux artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./app/build/outputs/apk/release/app-release.apk
+          asset_name: app-release.apk
+          asset_content_type: application/vnd.android.package-archive
