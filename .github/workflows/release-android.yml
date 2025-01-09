@@ -2,7 +2,7 @@
 # tell us automatically if something got broken when a dependency was changed.
 
 name: react-native-android-build-apk
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   AssembleRelease:
@@ -52,7 +52,7 @@ jobs:
           draft: false
           prerelease: false
           release_name: ${{ steps.version.outputs.version }}
-          tag_name: v2.3.5
+          tag_name: v3.2.5
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
