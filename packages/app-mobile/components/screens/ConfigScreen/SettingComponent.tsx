@@ -95,9 +95,9 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 		const label = md.unitLabel?.toString() !== undefined ? `${md.label()} (${md.unitLabel(md.value)})` : `${md.label()}`;
 
 		return (
-			<View key={props.settingId} style={{ flexDirection: 'column', borderBottomWidth: 1, borderBottomColor: theme.dividerColor }}>
-				<View key={props.settingId} style={containerStyle}>
-					<Text key="label" style={styleSheet.settingText}>
+			<View key={props.settingId} style={containerStyles.outerContainer}>
+				<View key={props.settingId} style={containerStyles.innerContainer}>
+					<Text key="label" style={styleSheet.settingText} nativeID={labelId}>
 						{label}
 					</Text>
 					<TextInput
@@ -116,6 +116,7 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 						}}
 						maxLength={15}
 						secureTextEntry={!!md.secure}
+						aria-labelledby={labelId}
 					/>
 				</View>
 				{descriptionComp}
