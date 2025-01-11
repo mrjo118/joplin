@@ -117,6 +117,7 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 						maxLength={15}
 						secureTextEntry={!!md.secure}
 						aria-labelledby={labelId}
+						disableFullscreenUI={true}
 					/>
 				</View>
 				{descriptionComp}
