@@ -810,7 +810,14 @@ class Setting extends BaseModel {
 	public static formatValue(key: string | SettingItemType, value: any) {
 		const type = typeof key === 'string' ? this.settingMetadata(key).type : key;
 
-		if (type === SettingItemType.Int) return !value ? 0 : Math.floor(Number(value));
+		if (type === SettingItemType.Int) {
+			if (value === '') {
+				// Set empty string as null instead of zero, so that validations will fail
+				return null;
+			} else {
+				return !value ? 0 : Math.floor(Number(value));
+			}
+		}
 
 		if (type === SettingItemType.Bool) {
 			if (typeof value === 'string') {

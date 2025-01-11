@@ -4,7 +4,7 @@ const ObjectUtils = require('../../../ObjectUtils');
 const { _ } = require('../../../locale');
 import { createSelector } from 'reselect';
 import Logger from '@joplin/utils/Logger';
-
+import shim, { MessageBoxType } from '../../../shim';
 import { type ReactNode } from 'react';
 import { type Registry } from '../../../registry';
 import settingValidations from '../../../models/settings/settingValidations';
@@ -155,7 +155,11 @@ export const saveSettings = async (comp: ConfigScreenComponent) => {
 
 	const validationMessage = await settingValidations(savedSettingKeys, comp.state.settings);
 	if (validationMessage) {
-		alert(validationMessage);
+		await shim.showMessageBox(validationMessage, {
+			type: MessageBoxType.Error,
+			buttons: [_('OK')],
+		});
+
 		return false;
 	}
 

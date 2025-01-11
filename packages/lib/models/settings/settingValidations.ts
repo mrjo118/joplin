@@ -3,6 +3,7 @@ import shim from '../../shim';
 import BaseItem from '../BaseItem';
 import Resource from '../Resource';
 import Setting from '../Setting';
+import { SettingItemType } from './types';
 
 // Should return an error message if there's a problem, and an empty string if not.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -37,24 +38,52 @@ const validations: Record<string, ValidationHandler> = {
 
 		return '';
 	},
+};
 
+const validateInteger = async (key: string, newValue: number) => {
+	const md = Setting.settingMetadata(key);
+	const minimum = 'minimum' in md ? md.minimum : null;
+	const maximum = 'maximum' in md ? md.maximum : null;
+
+	if (newValue === null || isNaN(newValue)) {
+		return _('%s must be a valid whole number', md.label());
+	}
+
+	if (maximum !== null && newValue > maximum) {
+		return _('%s cannot be greater than %s', md.label(), maximum);
+	}
+
+	if (minimum !== null && newValue < minimum) {
+		return _('%s cannot be less than %s', md.label(), minimum);
+	}
+
+	return '';
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
-const validateSetting = async (settingName: string, oldValue: any, newValue: any) => {
+const validateSetting = async (settingName: string, newValues: Record<string, any>) => {
+	const md = Setting.settingMetadata(settingName);
+	const oldValue = Setting.value(settingName); // Needs to be set this way, rather than from Setting.settingMetadata
+	const newValue = newValues[settingName];
 	if (oldValue === newValue) return '';
-	if (!validations[settingName]) return '';
 
+	// Type based validations
+	if (md.type === SettingItemType.Int && !md.isEnum) {
+		const message = await validateInteger(settingName, newValue as number);
+		if (message !== '') return message;
+	}
+
+	// Custom validations
+	if (!validations[settingName]) return '';
 	return await validations[settingName](oldValue, newValue);
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 export default async (settingKeys: string[], newValues: Record<string, any>) => {
 	for (const key of settingKeys) {
-		const oldValue = Setting.value(key);
-		const newValue = newValues[key];
-		const message = await validateSetting(key, oldValue, newValue);
-		return message;
+		const message = await validateSetting(key, newValues);
+		if (message !== '') return message;
 	}
+
 	return '';
 };

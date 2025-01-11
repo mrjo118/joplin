@@ -32,4 +32,42 @@ describe('settingValidations', () => {
 		}
 		expect(await settingValidations(['sync.target'], { 'sync.target': newSyncTargetId })).toBe('');
 	});
+
+	test('should return error message for null value for setting without range', async () => {
+		const value = await settingValidations(['style.editor.contentMaxWidth'], { 'style.editor.contentMaxWidth': null });
+		expect(value).toBe('Editor maximum width must be a valid whole number');
+	});
+
+	test('should return error message for null value for setting with range', async () => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': null });
+		expect(value).toBe('Keep note history for must be a valid whole number');
+	});
+
+	test.each(
+		[0, -1],
+	)('should return error message for too low integer values', async (input) => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': input });
+		expect(value).toBe('Keep note history for cannot be less than 1');
+	});
+
+	test.each(
+		[731, 1e20],
+	)('should return error message for too high integer values', async (input) => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': input });
+		expect(value).toBe('Keep note history for cannot be greater than 730');
+	});
+
+	test.each(
+		[-999999999999999, 0, 999999999999999],
+	)('should return empty string for valid integer values for setting without range', async (input) => {
+		const value = await settingValidations(['style.editor.contentMaxWidth'], { 'style.editor.contentMaxWidth': input });
+		expect(value).toBe('');
+	});
+
+	test.each(
+		[1, 300, 730],
+	)('should return empty string for valid integer values for setting with range', async (input) => {
+		const value = await settingValidations(['revisionService.ttlDays'], { 'revisionService.ttlDays': input });
+		expect(value).toBe('');
+	});
 });

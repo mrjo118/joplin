@@ -141,18 +141,24 @@ class ConfigScreenComponent extends React.Component<any, any> {
 	public async switchSection(name: string) {
 		const section = this.sectionByName(name);
 		let screenName = '';
-		if (section.isScreen) {
-			screenName = section.name;
+		if (section.isScreen || name === 'plugins') {
+			if (section.isScreen) {
+				screenName = section.name;
+			}
 
 			if (this.hasChanges()) {
 				const ok = await shim.showConfirmationDialog(_('This will open a new screen. Save your current changes?'));
 				if (ok) {
-					await shared.saveSettings(this);
+					const result = await shared.saveSettings(this);
+					if (result === false) return false;
+				} else {
+					return false;
 				}
 			}
 		}
 
 		this.setState({ selectedSectionName: section.name, screenName: screenName });
+		return true;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied

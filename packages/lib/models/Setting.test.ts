@@ -456,4 +456,19 @@ describe('models/Setting', () => {
 			await Setting.saveAll();
 		}
 	});
+
+	test.each([
+		['1', 1],
+		['-1', -1],
+		['+1', 1],
+		['', null],
+		[null, 0],
+		[undefined, 0],
+		['1e3', 1000],
+		['1e20', 1e20],
+		['99999999999999999999', 1e20], // Value exceeds integer limit, output exhibits a rounding issue but still retains integer type
+	])('should format integer type setting as an integer or null', (async (input, expectedOutput) => {
+		const value = Setting.formatValue('revisionService.ttlDays', input);
+		expect(value).toBe(expectedOutput);
+	}));
 });
