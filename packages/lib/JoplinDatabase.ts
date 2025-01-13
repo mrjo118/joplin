@@ -998,11 +998,9 @@ export default class JoplinDatabase extends Database {
 		this.logger().info('Checking for database schema update...');
 
 		let versionRow = null;
-		let sqliteversion = null;
 		try {
 			// Will throw if the database has not been created yet, but this is handled below
 			versionRow = await this.selectOne('SELECT * FROM version LIMIT 1');
-			sqliteversion = await this.selectOne('select sqlite_version() AS sqlite_version');
 		} catch (error) {
 			if (error.message && error.message.indexOf('no such table: version') >= 0) {
 				// Ignore
@@ -1010,8 +1008,6 @@ export default class JoplinDatabase extends Database {
 				this.logger().info(error);
 			}
 		}
-
-		this.logger().info(sqliteversion.sqlite_version);
 
 		const version = !versionRow ? 0 : versionRow.version;
 		const tableFieldsVersion = !versionRow ? 0 : versionRow.table_fields_version;
