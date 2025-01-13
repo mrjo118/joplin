@@ -52,7 +52,7 @@ class MainApplication : Application(), ReactApplication {
         try {
             val field = CursorWindow::class.java.getDeclaredField("sCursorWindowSize")
             field.isAccessible = true
-            field[null] = 50 * 1024 * 1024 //the 102400 is the new size added
+            field[null] = 1024
         } catch (e: Exception) {
             e.printStackTrace()
         }
