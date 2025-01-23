@@ -1034,5 +1034,19 @@ export default class JoplinDatabase extends Database {
 				default: Database.formatValue(row.field_type, row.field_default),
 			});
 		}
+
+		let sqliteversion = null;
+		try {
+			// Will throw if the database has not been created yet, but this is handled below
+			sqliteversion = await this.selectOne('select sqlite_version() AS sqlite_version');
+		} catch (error) {
+			if (error.message && error.message.indexOf('no such table: version') >= 0) {
+				// Ignore
+			} else {
+				this.logger().info(error);
+			}
+		}
+
+		this.logger().info(sqliteversion.sqlite_version);
 	}
 }
