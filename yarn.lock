@@ -40032,6 +40032,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-native-sqlite-storage@patch:react-native-sqlite-storage@npm%3A6.0.1#./.yarn/patches/react-native-sqlite-storage-npm-6.0.1-8369d747bd.patch::locator=root%40workspace%3A.":
+  version: 6.0.1
+  resolution: "react-native-sqlite-storage@patch:react-native-sqlite-storage@npm%3A6.0.1#./.yarn/patches/react-native-sqlite-storage-npm-6.0.1-8369d747bd.patch::version=6.0.1&hash=1a0bcb&locator=root%40workspace%3A."
+  peerDependencies:
+    react-native: ">=0.14.0"
+  checksum: 6873fc30cfca3ab578afdcbb9c1d1ce63b0631af146b839db482193d240ff4fef5849702bf9526b630bb0f74609a74b471a6a63f9619588321a8507e738b7f5c
+  languageName: node
+  linkType: hard
+
 "react-native-url-polyfill@npm:2.0.0":
   version: 2.0.0
   resolution: "react-native-url-polyfill@npm:2.0.0"
