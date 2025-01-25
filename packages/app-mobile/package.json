@@ -99,7 +99,7 @@
     "@tsconfig/react-native": "2.0.2",
     "@types/fs-extra": "11.0.4",
     "@types/jest": "29.5.12",
-    "@types/node": "18.19.55",
+    "@types/node": "18.19.59",
     "@types/react": "18.3.3",
     "@types/react-native": "0.70.6",
     "@types/react-redux": "7.1.33",
@@ -130,7 +130,7 @@
     "ts-node": "10.9.2",
     "typescript": "5.4.5",
     "url-loader": "4.1.1",
-    "webpack": "5.84.0",
+    "webpack": "5.97.1",
     "webpack-cli": "5.1.4",
     "webpack-dev-server": "5.0.4"
   },

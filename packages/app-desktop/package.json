@@ -1,6 +1,6 @@
 {
   "name": "@joplin/app-desktop",
-  "version": "3.2.11",
+  "version": "3.2.12",
   "description": "Joplin for Desktop",
   "main": "main.js",
   "private": true,
@@ -137,14 +137,14 @@
     "@playwright/test": "1.45.3",
     "@testing-library/react-hooks": "8.0.1",
     "@types/jest": "29.5.12",
-    "@types/node": "18.19.55",
+    "@types/node": "18.19.59",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@types/react-redux": "7.1.33",
     "@types/styled-components": "5.1.32",
     "@types/tesseract.js": "2.0.0",
     "axios": "^1.7.7",
-    "electron": "32.2.0",
+    "electron": "34.0.0",
     "electron-builder": "24.13.3",
     "glob": "10.4.5",
     "gulp": "4.0.2",
@@ -208,6 +208,6 @@
     "styled-system": "5.1.5",
     "taboverride": "4.0.3",
     "tesseract.js": "5.1.0",
-    "tinymce": "5.10.6"
+    "tinymce": "6.8.5"
   }
 }
