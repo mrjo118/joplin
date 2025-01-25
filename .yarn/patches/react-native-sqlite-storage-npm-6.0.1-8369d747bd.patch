@@ -26,7 +26,7 @@ index 4f2391b..f7cc433 100644
 +            // https://github.com/laurent22/joplin/issues/1767#issuecomment-515617991
 +
 +            if (cur != null && Build.VERSION.SDK_INT >= 28) {
-+                CursorWindow cw = new CursorWindow(null, 1024);
++                CursorWindow cw = new CursorWindow(null, 50 * 1024 * 1024);
 +                AbstractWindowedCursor ac = (AbstractWindowedCursor) cur;
 +                ac.setWindow(cw);
 +                cur = ac;
