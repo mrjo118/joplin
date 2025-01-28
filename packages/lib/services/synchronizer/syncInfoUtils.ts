@@ -2,6 +2,7 @@ import Logger from '@joplin/utils/Logger';
 import { FileApi } from '../../file-api';
 import JoplinDatabase from '../../JoplinDatabase';
 import Setting from '../../models/Setting';
+import BaseItem from '../../models/BaseItem';
 import { State } from '../../reducer';
 import { PublicPrivateKeyPair } from '../e2ee/ppk';
 import { MasterKeyEntity } from '../e2ee/types';
@@ -82,7 +83,7 @@ export async function uploadSyncInfo(api: FileApi, syncInfo: SyncInfo) {
 	await api.put('info.json', syncInfo.serialize());
 }
 
-export async function fetchSyncInfo(api: FileApi): Promise<SyncInfo> {
+export async function fetchSyncInfo(api: FileApi, checkSyncedItems = false): Promise<SyncInfo> {
 	const syncTargetInfoText = await api.get('info.json');
 
 	// Returns version 0 if the sync target is empty
@@ -96,10 +97,41 @@ export async function fetchSyncInfo(api: FileApi): Promise<SyncInfo> {
 		// If info.json is not present, this might be an old sync target, in
 		// which case we can at least get the version number from version.txt
 		const oldVersion = await api.get('.sync/version.txt');
-		if (oldVersion) output = { version: 1 };
+
+		if (oldVersion) {
+			output = { version: 1 };
+		} else {
+			// Where info.json is missing, but .sync/version.txt is not, the sync target will be set as needing upgrade, and will be upgraded upon restarting the app
+			// If both info.json and .sync/version.txt are missing, it can be assumed that something has gone wrong with the sync target, so do not mark as needing upgrade and raise a failsafe error
+			await performFailsafeValidation(api, checkSyncedItems);
+		}
 	}
 
 	return fixSyncInfo(new SyncInfo(JSON.stringify(output)));
+}
+
+export async function checkSyncTargetIsValid(api: FileApi): Promise<void> {
+	const syncTargetInfoText = await api.get('info.json');
+
+	if (!syncTargetInfoText) {
+		await performFailsafeValidation(api, false);
+	}
+}
+
+async function performFailsafeValidation(api: FileApi, checkSyncedItems = false) {
+	// When setting up a new sync target, info.json and .sync/version.txt will not yet exist on remote
+	// checkSyncedItems should be passed as true for this scenario, to bypass the failsafe error where the sync target has never been synced
+	let bypassFailsafe = false;
+	if (checkSyncedItems) {
+		const syncedItems = await BaseItem.syncedItemIds(api.syncTargetId());
+		if (syncedItems.length === 0) {
+			bypassFailsafe = true;
+		}
+	}
+
+	if (!bypassFailsafe && Setting.value('sync.wipeOutFailSafe')) {
+		throw new JoplinError(_('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.'), 'failSafe');
+	}
 }
 
 export function saveLocalSyncInfo(syncInfo: SyncInfo) {
