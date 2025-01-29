@@ -118,9 +118,16 @@ export async function checkSyncTargetIsValid(api: FileApi): Promise<void> {
 	}
 }
 
+// This failsafe validation will be performed regardless of which sync target is selected
+// Other failsafe validation is performed based on the percentage of items deleted in the "basicDelta" function
+// The basicDelta is not executed for all sync target types, but the validation in this function is superior at protecting against data loss
+// However it is still beneficial to keep the failsafe check which is driven by count of deleted items in place, as it can protect against deliberate deletion of all notes by the user,
+// where they are not aware of the implications of 2 way sync. This is just "nice to have" though, so would not be worth adding complexity to make it work for all sync target types
 async function performFailsafeValidation(api: FileApi, checkSyncedItems = false) {
 	// When setting up a new sync target, info.json and .sync/version.txt will not yet exist on remote
 	// checkSyncedItems should be passed as true for this scenario, to bypass the failsafe error where the sync target has never been synced
+	// When performing 'Delete local data and re-download from sync target' or 'Re-upload local data to sync target' actions, all sync_items are cleared down,
+	// so they will bypass the error here, as if it was a new sync target
 	let bypassFailsafe = false;
 	if (checkSyncedItems) {
 		const syncedItems = await BaseItem.syncedItemIds(api.syncTargetId());
