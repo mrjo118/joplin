@@ -109,7 +109,7 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 						autoCapitalize="none"
 						key="control"
 						style={styleSheet.settingControl}
-						value={valueState}
+						defaultValue={valueState}
 						onChangeText={newValue => {
 							setValueState(newValue);
 							void props.updateSettingValue(props.settingId, Number.isInteger(Number(newValue)) ? newValue : ''); // Prevent invalid values being mapped to 0
@@ -151,7 +151,7 @@ const SettingComponent: React.FunctionComponent<Props> = props => {
 						autoCapitalize="none"
 						key="control"
 						style={styleSheet.settingControl}
-						value={props.value}
+						defaultValue={props.value}
 						onChangeText={(newValue: string) => void props.updateSettingValue(props.settingId, newValue)}
 						secureTextEntry={!!md.secure}
 						aria-labelledby={labelId}
