@@ -83,7 +83,7 @@ export async function uploadSyncInfo(api: FileApi, syncInfo: SyncInfo) {
 	await api.put('info.json', syncInfo.serialize());
 }
 
-export async function fetchSyncInfo(api: FileApi, checkSyncedItems = false): Promise<SyncInfo> {
+export async function fetchSyncInfo(api: FileApi): Promise<SyncInfo> {
 	const syncTargetInfoText = await api.get('info.json');
 
 	// Returns version 0 if the sync target is empty
@@ -98,12 +98,13 @@ export async function fetchSyncInfo(api: FileApi, checkSyncedItems = false): Pro
 		// which case we can at least get the version number from version.txt
 		const oldVersion = await api.get('.sync/version.txt');
 
+		// Where info.json is missing, but .sync/version.txt is not, the sync target will be set as needing upgrade, and will be upgraded upon restarting the app
+		// If both info.json and .sync/version.txt are missing, it can be assumed that something has gone wrong with the sync target, so do not mark as needing upgrade and raise a failsafe error if not the initial sync
+		// When performing 'Delete local data and re-download from sync target' or 'Re-upload local data to sync target' actions, all sync_items are cleared down as if it were the initial sync
 		if (oldVersion) {
 			output = { version: 1 };
-		} else {
-			// Where info.json is missing, but .sync/version.txt is not, the sync target will be set as needing upgrade, and will be upgraded upon restarting the app
-			// If both info.json and .sync/version.txt are missing, it can be assumed that something has gone wrong with the sync target, so do not mark as needing upgrade and raise a failsafe error
-			await performFailsafeValidation(api, checkSyncedItems);
+		} else if (!(await isInitialSync(api.syncTargetId()))) {
+			throwFailsafeError();
 		}
 	}
 
@@ -114,29 +115,22 @@ export async function checkSyncTargetIsValid(api: FileApi): Promise<void> {
 	const syncTargetInfoText = await api.get('info.json');
 
 	if (!syncTargetInfoText) {
-		await performFailsafeValidation(api, false);
+		throwFailsafeError();
 	}
 }
 
-// This failsafe validation will be performed regardless of which sync target is selected
+async function isInitialSync(syncTargetId: number) {
+	const syncedItems = await BaseItem.syncedItemIds(syncTargetId);
+	return syncedItems.length === 0;
+}
+
+// This failsafe validation producing this error will be performed regardless of which sync target is selected
 // Other failsafe validation is performed based on the percentage of items deleted in the "basicDelta" function
 // The basicDelta is not executed for all sync target types, but the validation in this function is superior at protecting against data loss
 // However it is still beneficial to keep the failsafe check which is driven by count of deleted items in place, as it can protect against deliberate deletion of all notes by the user,
 // where they are not aware of the implications of 2 way sync. This is just "nice to have" though, so would not be worth adding complexity to make it work for all sync target types
-async function performFailsafeValidation(api: FileApi, checkSyncedItems = false) {
-	// When setting up a new sync target, info.json and .sync/version.txt will not yet exist on remote
-	// checkSyncedItems should be passed as true for this scenario, to bypass the failsafe error where the sync target has never been synced
-	// When performing 'Delete local data and re-download from sync target' or 'Re-upload local data to sync target' actions, all sync_items are cleared down,
-	// so they will bypass the error here, as if it was a new sync target
-	let bypassFailsafe = false;
-	if (checkSyncedItems) {
-		const syncedItems = await BaseItem.syncedItemIds(api.syncTargetId());
-		if (syncedItems.length === 0) {
-			bypassFailsafe = true;
-		}
-	}
-
-	if (!bypassFailsafe && Setting.value('sync.wipeOutFailSafe')) {
+function throwFailsafeError() {
+	if (Setting.value('sync.wipeOutFailSafe')) {
 		throw new JoplinError(_('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.'), 'failSafe');
 	}
 }

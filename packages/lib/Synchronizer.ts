@@ -472,7 +472,7 @@ export default class Synchronizer {
 			this.api().setTempDirName(Dirnames.Temp);
 
 			try {
-				let remoteInfo = await fetchSyncInfo(this.api(), true);
+				let remoteInfo = await fetchSyncInfo(this.api());
 				logger.info('Sync target remote info:', remoteInfo.filterSyncInfo());
 				eventManager.emit(EventName.SessionEstablished);
 

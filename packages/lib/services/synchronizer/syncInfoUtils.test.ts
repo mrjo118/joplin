@@ -375,7 +375,7 @@ describe('syncInfoUtils', () => {
 		expectedSyncInfo.version = 50;
 		await fileApi().put('info.json', expectedSyncInfo.serialize());
 
-		const actualSyncInfo = await fetchSyncInfo(fileApi(), false);
+		const actualSyncInfo = await fetchSyncInfo(fileApi());
 		expect(actualSyncInfo).toStrictEqual(expectedSyncInfo);
 	}));
 
@@ -385,7 +385,7 @@ describe('syncInfoUtils', () => {
 
 		let errorMsg = null;
 		try {
-			await fetchSyncInfo(fileApi(), false);
+			await fetchSyncInfo(fileApi());
 		} catch (error) {
 			errorMsg = error.message;
 		}
@@ -396,30 +396,18 @@ describe('syncInfoUtils', () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
 		await fileApi().put('.sync/version.txt', '{}');
 
-		const actualSyncInfo = await fetchSyncInfo(fileApi(), false);
+		const actualSyncInfo = await fetchSyncInfo(fileApi());
 		expect(actualSyncInfo.version).toBe(1);
 	}));
 
 	it('should succeed when info.json and .sync/version.txt does not exist and failsafe is disabled for fetchSyncInfo', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', false);
 
-		const actualSyncInfo = await fetchSyncInfo(fileApi(), false);
+		const actualSyncInfo = await fetchSyncInfo(fileApi());
 		expect(actualSyncInfo.version).toBe(0);
 	}));
 
-	it('should fail with failsafe error when info.json and .sync/version.txt does not exist for fetchSyncInfo', (async () => {
-		Setting.setValue('sync.wipeOutFailSafe', true);
-
-		let errorMsg = null;
-		try {
-			await fetchSyncInfo(fileApi(), false);
-		} catch (error) {
-			errorMsg = error.message;
-		}
-		expect(errorMsg).toBe('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.');
-	}));
-
-	it('should fail with failsafe error when info.json and .sync/version.txt does not exist when checkSyncedItems is true and sync items are present for fetchSyncInfo', (async () => {
+	it('should fail with failsafe error when info.json and .sync/version.txt does not exist when sync items are present for fetchSyncInfo', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
 		const note = {
 			id: 1,
@@ -429,18 +417,18 @@ describe('syncInfoUtils', () => {
 
 		let errorMsg = null;
 		try {
-			await fetchSyncInfo(fileApi(), true);
+			await fetchSyncInfo(fileApi());
 		} catch (error) {
 			errorMsg = error.message;
 		}
 		expect(errorMsg).toBe('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.');
 	}));
 
-	it('should succeed when info.json and .sync/version.txt does not exist when checkSyncedItems is true and sync items are not present for fetchSyncInfo', (async () => {
+	it('should succeed when info.json and .sync/version.txt does not exist when sync items are not present for fetchSyncInfo', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
 		let errorMsg = null;
 		try {
-			await fetchSyncInfo(fileApi(), true);
+			await fetchSyncInfo(fileApi());
 		} catch (error) {
 			errorMsg = error.message;
 		}
