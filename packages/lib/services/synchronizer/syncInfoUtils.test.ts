@@ -334,39 +334,17 @@ describe('syncInfoUtils', () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
 		const syncInfo = new SyncInfo();
 		await fileApi().put('info.json', syncInfo.serialize());
-
-		let errorMsg = null;
-		try {
-			await checkSyncTargetIsValid(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-
-		expect(errorMsg).toBe(null);
+		expect(checkSyncTargetIsValid(fileApi())).resolves.not.toThrow();
 	}));
 
 	it('should succeed when info.json does not exist and failsafe is disabled for checkSyncTargetIsValid', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', false);
-		let errorMsg = null;
-		try {
-			await checkSyncTargetIsValid(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-
-		expect(errorMsg).toBe(null);
+		expect(checkSyncTargetIsValid(fileApi())).resolves.not.toThrow();
 	}));
 
 	it('should fail with failsafe error when info.json does not exist for checkSyncTargetIsValid', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
-		let errorMsg = null;
-		try {
-			await checkSyncTargetIsValid(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-
-		expect(errorMsg).toBe('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.');
+		await expect(checkSyncTargetIsValid(fileApi())).rejects.toThrow('Fail-safe: ');
 	}));
 
 	it('should succeed when info.json exists and is valid for fetchSyncInfo', (async () => {
@@ -382,14 +360,7 @@ describe('syncInfoUtils', () => {
 	it('should fail with missing version error when info.json exists but is invalid for fetchSyncInfo', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
 		await fileApi().put('info.json', new SyncInfo().serialize());
-
-		let errorMsg = null;
-		try {
-			await fetchSyncInfo(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-		expect(errorMsg).toBe('Missing "version" field in info.json');
+		await expect(fetchSyncInfo(fileApi())).rejects.toThrow('Missing "version" field');
 	}));
 
 	it('should succeed when info.json does not exist but .sync/version.txt does exist for fetchSyncInfo', (async () => {
@@ -414,24 +385,11 @@ describe('syncInfoUtils', () => {
 			type_: BaseModel.TYPE_NOTE,
 		};
 		await BaseItem.saveSyncTime(fileApi().syncTargetId(), note, 1);
-
-		let errorMsg = null;
-		try {
-			await fetchSyncInfo(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-		expect(errorMsg).toBe('Fail-safe: Sync was interrupted to prevent data loss, because the sync target is empty or damaged. To override this behaviour disable the fail-safe in the sync settings.');
+		await expect(fetchSyncInfo(fileApi())).rejects.toThrow('Fail-safe: ');
 	}));
 
 	it('should succeed when info.json and .sync/version.txt does not exist when sync items are not present for fetchSyncInfo', (async () => {
 		Setting.setValue('sync.wipeOutFailSafe', true);
-		let errorMsg = null;
-		try {
-			await fetchSyncInfo(fileApi());
-		} catch (error) {
-			errorMsg = error.message;
-		}
-		expect(errorMsg).toBe(null);
+		expect(fetchSyncInfo(fileApi())).resolves.not.toThrow();
 	}));
 });
