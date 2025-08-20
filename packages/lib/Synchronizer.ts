@@ -601,12 +601,21 @@ export default class Synchronizer {
 
 						// Safety check to avoid infinite loops.
 						// - In fact this error is possible if the item is marked for sync (via sync_time or force_sync) while synchronisation is in
-						//   progress. In that case exit anyway to be sure we aren't in a loop and the item will be re-synced next time.
+						//   progress. In that case continue looping as we don't want the sync to stop when there are still un-synced outgoing changes,
+						//   otherwise this creates a race condition on mobile, where additional changes made during upload are not synced and don't trigger
+						//   another sync, whereas a change made immediately after the sync has finished will trigger another sync. Once the user has stopped
+						//   typing, it can then break out of the loop and continue the rest of the process.
 						// - It can also happen if the item is directly modified in the sync target, and set with an update_time in the future. In that case,
 						//   the local sync_time will be updated to Date.now() but on the next loop it will see that the remote item still has a date ahead
 						//   and will see a conflict. There's currently no automatic fix for this - the remote item on the sync target must be fixed manually
 						//   (by setting an updated_time less than current time).
-						if (donePaths.indexOf(path) >= 0) throw new JoplinError(sprintf('Processing a path that has already been done: %s. sync_time was not updated? Remote item has an updated_time in the future?', path), 'processingPathTwice');
+						if (donePaths.indexOf(path) >= 0) {
+							if (local.updated_time > time.unixMs()) {
+								throw new JoplinError(sprintf('Processing a path that has already been done: %s. Remote item has an updated_time in the future', path), 'processingPathTwice');
+							} else {
+								logger.info(sprintf('Processing a path that has already been done: %s. sync_time was not updated', path));
+							}
+						}
 
 						const remote: RemoteItem = result.neverSyncedItemIds.includes(local.id) ? null : await this.apiCall('stat', path);
 						let action: SyncAction = null;
