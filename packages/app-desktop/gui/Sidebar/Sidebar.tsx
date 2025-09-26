@@ -20,6 +20,7 @@ interface Props {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	syncReport: any;
 	syncStarted: boolean;
+	syncChangesPending: boolean;
 }
 
 const SidebarComponent = (props: Props) => {
@@ -30,7 +31,7 @@ const SidebarComponent = (props: Props) => {
 		return (
 			<StyledSynchronizeButton
 				level={ButtonLevel.SidebarSecondary}
-				iconName="icon-sync"
+				iconName={props.syncChangesPending ? 'icon-sync icon-sync-pending' : 'icon-sync'}
 				key="sync_button"
 				iconAnimation={iconAnimation}
 				title={label}
@@ -88,6 +89,7 @@ const mapStateToProps = (state: AppState) => {
 	return {
 		searches: state.searches,
 		syncStarted: state.syncStarted,
+		syncChangesPending: state.syncChangesPending,
 		syncReport: state.syncReport,
 		selectedSearchId: state.selectedSearchId,
 		selectedSmartFilterId: state.selectedSmartFilterId,

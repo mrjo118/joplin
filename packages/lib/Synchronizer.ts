@@ -420,6 +420,8 @@ export default class Synchronizer {
 
 		this.progressReport_.startTime = time.unixMs();
 
+		// We want to mark changes pending if the sync is in progress upon execution of any scheduled sync or a manual sync
+		this.dispatch({ type: 'SYNC_CHANGES_PENDING' });
 		this.dispatch({ type: 'SYNC_STARTED' });
 		eventManager.emit(EventName.SyncStart);
 
@@ -1221,6 +1223,9 @@ export default class Synchronizer {
 			if (result.items.length > 0) {
 				logger.info('There are more outgoing changes to sync, trigger the sync again');
 				return await this.start(options);
+			} else {
+				// Only reset changes pending if the last sync did not error and was not cancelled and there are no more outgoing changes to sync
+				this.dispatch({ type: 'SYNC_CHANGES_PENDING_RESET' });
 			}
 		}
 
