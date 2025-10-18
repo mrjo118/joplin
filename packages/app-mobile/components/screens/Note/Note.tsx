@@ -720,8 +720,13 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			// when the Web app is being used on a desktop OS, so providing a toggle to expand the title field can only be done on mobile platforms
 			newText = text.replace(/(\r\n|\n|\r)/gm, ' ');
 		}
-		shared.noteComponent_change(this, 'title', newText);
-		this.setState({ newAndNoTitleChangeNoteId: null });
+
+		// Make state changes directly in this component and group them together, to avoid an issue where the title is cleared upon toggling multiline on iOS
+		const note = { ...this.state.note };
+		note.title = newText;
+
+		this.setState({ note, newAndNoTitleChangeNoteId: null });
+		this.scheduleSave(this.state);
 	}
 
 	private emitEditorPluginUpdate_() {
