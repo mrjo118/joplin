@@ -726,10 +726,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		note.title = newText;
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Assigning types to these variables would be too big of a refactoring
-		const newState: any = {};
-		newState.note = note;
-		newState.newAndNoTitleChangeNoteId = null;
-
+		const newState: any = { note, newAndNoTitleChangeNoteId: null };
 		this.scheduleSave(newState);
 		this.setState(newState);
 	}
