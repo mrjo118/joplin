@@ -202,7 +202,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			folder: null,
 			lastSavedNote: null,
 			isLoading: true,
-			titleTextInputHeight: 20,
+			titleTextInputHeight: 40,
 			alarmDialogShown: false,
 			heightBumpView: 0,
 			noteTagDialogShown: false,
@@ -531,6 +531,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			fontSize: theme.fontSize,
 			paddingTop: 10, // Added for iOS (Not needed for Android??)
 			paddingBottom: 10, // Added for iOS (Not needed for Android??)
+			maxHeight: '100%',
 		};
 
 		this.styles_[cacheKey] = StyleSheet.create(styles);
@@ -1753,7 +1754,11 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 					ref={this.titleTextFieldRef}
 					underlineColorAndroid="#ffffff00"
 					autoCapitalize="sentences"
-					style={this.styles().titleTextInput}
+					style={{
+						...this.styles().titleTextInput,
+						// TODO make this only apply if on web platform
+						height: this.state.multiline ? this.state.titleTextInputHeight : 40,
+					}}
 					value={note.title}
 					onChangeText={this.title_changeText}
 					onKeyPress={this.title_keyPress}
@@ -1764,6 +1769,10 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 					editable={!this.state.readOnly}
 					multiline={this.state.multiline}
 					submitBehavior = "blurAndSubmit"
+					onContentSizeChange={(event) => {
+						const newHeight = event.nativeEvent.contentSize.height;
+						this.setState({ titleTextInputHeight: newHeight });
+					}}
 				/>
 				{ titleToggleButton }
 			</View>
