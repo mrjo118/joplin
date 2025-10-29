@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { View, StyleSheet, TextInput, Platform } from 'react-native';
+import { View, StyleSheet, TextInput } from 'react-native';
 import { AppState } from '../../utils/types';
 import useAsyncEffect from '@joplin/lib/hooks/useAsyncEffect';
 import Revision from '@joplin/lib/models/Revision';
@@ -213,14 +213,15 @@ const NoteRevisionViewer: React.FC<Props> = props => {
 		>{restoreButtonTitle}</PrimaryButton>
 	);
 
-	const titleToggleButton = Platform.OS === 'web' ? null :
+	const titleToggleButton = (
 		<IconButton
 			icon={(!multiline && 'menu-down') || (multiline && 'menu-up')}
 			accessibilityLabel={(!multiline && _('Expand title')) || (multiline && _('Collapse title'))}
 			onPress={onToggleTitlePress}
 			size={30}
 			style={{ width: 30, height: 30, alignSelf: 'center' }}
-		/>;
+		/>
+	);
 
 	const titleComponent = (
 		<View style={styles.titleViewContainer}>

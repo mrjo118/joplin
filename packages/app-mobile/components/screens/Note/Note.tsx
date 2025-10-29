@@ -7,7 +7,7 @@ import NoteBodyViewer from '../../NoteBodyViewer/NoteBodyViewer';
 import checkPermissions from '../../../utils/checkPermissions';
 import NoteEditor from '../../NoteEditor/NoteEditor';
 import * as React from 'react';
-import { Keyboard, View, TextInput, StyleSheet, Linking, Share, NativeSyntheticEvent } from 'react-native';
+import { Keyboard, View, TextInput, StyleSheet, Linking, Share, NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
 import { Platform, PermissionsAndroid } from 'react-native';
 import { connect } from 'react-redux';
 import Note from '@joplin/lib/models/Note';
@@ -49,7 +49,7 @@ import restoreItems from '@joplin/lib/services/trash/restoreItems';
 import { getDisplayParentTitle } from '@joplin/lib/services/trash';
 import { PluginHtmlContents, PluginStates, utils as pluginUtils } from '@joplin/lib/services/plugins/reducer';
 import debounce from '../../../utils/debounce';
-import { focus } from '@joplin/lib/utils/focusHandler';
+import { focus, blur } from '@joplin/lib/utils/focusHandler';
 import CommandService, { RegisteredRuntime } from '@joplin/lib/services/CommandService';
 import { ResourceInfo } from '../../NoteBodyViewer/hooks/useRerenderHandler';
 import getImageDimensions from '../../../utils/image/getImageDimensions';
@@ -718,14 +718,8 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	}
 
 	private title_changeText(text: string) {
-		let newText = text;
-		if (Platform.OS !== 'web') {
-			// Manipulating the underlying text inside of onChangeText causes issues with the cursor position jumping to the end while typing
-			// when the Web app is being used on a desktop OS, so providing a toggle to expand the title field can only be done on mobile platforms
-			newText = text.replace(/(\r\n|\n|\r)/gm, ' ');
-		}
-
 		// Group all state changes together, to avoid input issues on the web platform
+		const newText = text.replace(/(\r\n|\n|\r)/gm, ' ');
 		const note = { ...this.state.note };
 		note.title = newText;
 
@@ -739,6 +733,20 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			// Without the state update upon save, changing the note body and then changing the title before the scheduled save executes, results in some
 			// input loss. Therefore only do this on the web platform
 			this.scheduleSaveWithoutStateUpdate(newState);
+		}
+	}
+
+	private title_keyPress(e: NativeSyntheticEvent<TextInputKeyPressEventData>) {
+		// submitBehavior = "blurAndSubmit" does not work on React Native Web, so replicate this behaviour on the the web platform
+		if (Platform.OS === 'web') {
+			if (e.nativeEvent.key === 'Enter') {
+				e.preventDefault();
+				const activeElement = document.activeElement as HTMLElement;
+
+				if (activeElement) {
+					blur('Note::focusUpdate::title', activeElement);
+				}
+			}
 		}
 	}
 
@@ -1714,14 +1722,15 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 		const dueDate = Note.dueDateObject(note);
 
-		const titleToggleButton = Platform.OS === 'web' ? null :
+		const titleToggleButton = (
 			<IconButton
 				icon={(!this.state.multiline && 'menu-down') || (this.state.multiline && 'menu-up')}
 				accessibilityLabel={(!this.state.multiline && _('Expand title')) || (this.state.multiline && _('Collapse title'))}
 				onPress={() => this.setState({ multiline: !this.state.multiline })}
 				size={30}
 				style={{ width: 30, height: 30, alignSelf: 'center' }}
-			/>;
+			/>
+		);
 
 		const titleComp = (
 			<View style={titleContainerStyle}>
@@ -1734,6 +1743,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 					style={this.styles().titleTextInput}
 					value={note.title}
 					onChangeText={this.title_changeText}
+					onKeyPress={this.title_keyPress}
 					selectionColor={theme.textSelectionColor}
 					keyboardAppearance={theme.keyboardAppearance}
 					placeholder={_('Add title')}
