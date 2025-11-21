@@ -253,7 +253,12 @@ export default class Revision extends BaseItem {
 
 	// Note: revs must be sorted by update_time ASC (as returned by allByType)
 	public static async mergeDiffs(revision: RevisionEntity, revs: RevisionEntity[] = null) {
+		return (await this.calculateMergedRevisions(revision, revs, null))[0];
+	}
+
+	public static async calculateMergedRevisions(revision: RevisionEntity, revs: RevisionEntity[] = null, outputs: { title: string, body: string, metadata: object, keptRev: RevisionEntity}[] = []) {
 		if (!('encryption_applied' in revision) || !!revision.encryption_applied) throw new JoplinError('Target revision is encrypted', 'revision_encrypted');
+		const calculateForAllLeaves = outputs;
 
 		if (!revs) {
 			revs = await this.modelSelectAll('SELECT * FROM revisions WHERE item_type = ? AND item_id = ? AND item_updated_time <= ? ORDER BY item_updated_time ASC', [revision.item_type, revision.item_id, revision.item_updated_time]);
@@ -270,6 +275,7 @@ export default class Revision extends BaseItem {
 			title: '',
 			body: '',
 			metadata: {},
+			keptRev: revision,
 		};
 
 		// Build up the list of revisions that are parents of the target revision.
@@ -277,7 +283,7 @@ export default class Revision extends BaseItem {
 		let parentId = revision.parent_id;
 		for (let i = revs.length - 2; i >= 0; i--) {
 			const rev = revs[i];
-			if (rev.id !== parentId) continue;
+			if (rev.id !== parentId) continue; // TODO Add to another array here to iterate over again if calculateForAllLeaves is true, and use sql to get the kept rev when at the end, to use as a kept rev
 			parentId = rev.parent_id;
 			revIndexes.push(i);
 		}
@@ -296,7 +302,10 @@ export default class Revision extends BaseItem {
 			}
 		}
 
-		return output;
+		outputs = outputs ? outputs : [];
+		outputs.push(output);
+
+		return outputs;
 	}
 
 	public static async deleteOldRevisions(ttl: number) {
@@ -336,17 +345,19 @@ export default class Revision extends BaseItem {
 				}
 			} else {
 				// Note: we don't need to check for encrypted rev here because
-				// mergeDiff will already throw the revision_encrypted exception
+				// calculateMergedRevisions will already throw the revision_encrypted exception
 				// if a rev is encrypted.
-				const merged = await this.mergeDiffs(keptRev);
+				const merged = await this.calculateMergedRevisions(keptRev);
 
-				const titleDiff = this.createTextPatch('', merged.title);
-				const bodyDiff = this.createTextPatch('', merged.body);
-				const metadataDiff = this.createObjectPatch({}, merged.metadata);
-				queries.push({
-					sql: 'UPDATE revisions SET title_diff = ?, body_diff = ?, metadata_diff = ?, updated_time = ? WHERE id = ?',
-					params: [titleDiff, bodyDiff, metadataDiff, time.unixMs(), keptRev.id],
-				});
+				for (const merge of merged) {
+					const titleDiff = this.createTextPatch('', merge.title);
+					const bodyDiff = this.createTextPatch('', merge.body);
+					const metadataDiff = this.createObjectPatch({}, merge.metadata);
+					queries.push({
+						sql: 'UPDATE revisions SET title_diff = ?, body_diff = ?, metadata_diff = ?, updated_time = ? WHERE id = ?',
+						params: [titleDiff, bodyDiff, metadataDiff, time.unixMs(), merge.keptRev.id],
+					});
+				}
 			}
 
 			await this.batchDelete(oldRevisions.map(item => item.id), { sourceDescription: 'Revision.deleteOldRevisions' });
