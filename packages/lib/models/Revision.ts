@@ -9,6 +9,13 @@ const { sprintf } = require('sprintf-js');
 
 const dmp = new DiffMatchPatch();
 
+interface RevisionMergeResult {
+	title: string;
+	body: string;
+	metadata: object;
+	keptRev: RevisionEntity;
+}
+
 export interface ObjectPatch {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	new: Record<string, any>;
@@ -253,12 +260,11 @@ export default class Revision extends BaseItem {
 
 	// Note: revs must be sorted by update_time ASC (as returned by allByType)
 	public static async mergeDiffs(revision: RevisionEntity, revs: RevisionEntity[] = null) {
-		return (await this.calculateMergedRevisions(revision, revs, null))[0];
+		return (await this.calculateRevisionMergeResults(revision, revs, null))[0];
 	}
 
-	public static async calculateMergedRevisions(revision: RevisionEntity, revs: RevisionEntity[] = null, outputs: { title: string, body: string, metadata: object, keptRev: RevisionEntity}[] = []) {
+	private static async calculateRevisionMergeResults(revision: RevisionEntity, revs: RevisionEntity[] = null, outputs: RevisionMergeResult[] = []): Promise<RevisionMergeResult[]> {
 		if (!('encryption_applied' in revision) || !!revision.encryption_applied) throw new JoplinError('Target revision is encrypted', 'revision_encrypted');
-		const calculateForAllLeaves = outputs;
 
 		if (!revs) {
 			revs = await this.modelSelectAll('SELECT * FROM revisions WHERE item_type = ? AND item_id = ? AND item_updated_time <= ? ORDER BY item_updated_time ASC', [revision.item_type, revision.item_id, revision.item_updated_time]);
@@ -271,19 +277,24 @@ export default class Revision extends BaseItem {
 		// same milliseconds. All code below expects target revision to be on top.
 		revs = this.moveRevisionToTop(revision, revs);
 
-		const output = {
+		const output: RevisionMergeResult = {
 			title: '',
 			body: '',
 			metadata: {},
 			keptRev: revision,
 		};
 
+		const unmatchedRevisions: RevisionEntity[] = [];
+
 		// Build up the list of revisions that are parents of the target revision.
 		const revIndexes = [revs.length - 1];
 		let parentId = revision.parent_id;
 		for (let i = revs.length - 2; i >= 0; i--) {
 			const rev = revs[i];
-			if (rev.id !== parentId) continue; // TODO Add to another array here to iterate over again if calculateForAllLeaves is true, and use sql to get the kept rev when at the end, to use as a kept rev
+			if (rev.id !== parentId) {
+				unmatchedRevisions.push(rev);
+				continue;
+			}
 			parentId = rev.parent_id;
 			revIndexes.push(i);
 		}
@@ -302,10 +313,55 @@ export default class Revision extends BaseItem {
 			}
 		}
 
-		outputs = outputs ? outputs : [];
+		const shouldTraverseLeaves = outputs !== null;
+		outputs = outputs ?? [];
 		outputs.push(output);
 
+		if (shouldTraverseLeaves) {
+			const revisionMergeResults = await this.traverseRevisionLeaves(revision.item_type, revision.item_id, unmatchedRevisions, outputs);
+			outputs.push(...revisionMergeResults);
+		}
+
 		return outputs;
+	}
+
+	private static async traverseRevisionLeaves(itemType: number, itemId: string, unmatchedRevisions: RevisionEntity[], outputs: RevisionMergeResult[]): Promise<RevisionMergeResult[]> {
+		for (let i = unmatchedRevisions.length - 1; i >= 0; i--) {
+			const newestUnmatchedRev = unmatchedRevisions[i];
+			const keptRev = await this.modelSelectOne(
+				'SELECT * FROM revisions WHERE parent_id = ? AND item_type = ? AND item_id = ? ORDER BY item_updated_time ASC LIMIT 1',
+				[newestUnmatchedRev.id, itemType, itemId],
+			);
+
+			if (keptRev) {
+				// Break the loop and recursively process this branch to build a merged result. Only the first matching child is processed here; the recursion will handle further leaves
+				unmatchedRevisions.push(keptRev);
+				return await this.calculateRevisionMergeResults(keptRev, unmatchedRevisions, outputs);
+			}
+
+			// If there is no revision to keep, no revisions needs to be merged and so the entire branch can be deleted. Traverse the remaining leaves after doing this
+			unmatchedRevisions = this.removeRevisionBranch(newestUnmatchedRev, unmatchedRevisions);
+			return await this.traverseRevisionLeaves(itemType, itemId, unmatchedRevisions, outputs);
+		}
+
+		return [];
+	}
+
+	private static removeRevisionBranch(newestRev: RevisionEntity, revs: RevisionEntity[]) {
+		const newRevs: RevisionEntity[] = [];
+
+		// Build up the list of revisions that are not parents of the newest revision.
+		let parentId = newestRev.parent_id;
+		for (let i = revs.length - 1; i >= 0; i--) {
+			const rev = revs[i];
+			if (rev.id !== parentId) {
+				newRevs.push(rev);
+				continue;
+			}
+			parentId = rev.parent_id;
+		}
+
+		return newRevs;
 	}
 
 	public static async deleteOldRevisions(ttl: number) {
@@ -345,9 +401,9 @@ export default class Revision extends BaseItem {
 				}
 			} else {
 				// Note: we don't need to check for encrypted rev here because
-				// calculateMergedRevisions will already throw the revision_encrypted exception
+				// calculateRevisionMergeResults will already throw the revision_encrypted exception
 				// if a rev is encrypted.
-				const merged = await this.calculateMergedRevisions(keptRev);
+				const merged = await this.calculateRevisionMergeResults(keptRev);
 
 				for (const merge of merged) {
 					const titleDiff = this.createTextPatch('', merge.title);
