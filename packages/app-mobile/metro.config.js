@@ -102,4 +102,7 @@ const config = {
 	watchFolders: watchedFolders,
 };
 
-module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+const expoDefaultConfig = getExpoDefaultConfig(__dirname);
+expoDefaultConfig.resolver.assetExts = config.resolver.assetExts;
+
+module.exports = mergeConfig(defaultConfig, expoDefaultConfig, config);
