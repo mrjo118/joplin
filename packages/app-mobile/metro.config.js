@@ -12,7 +12,6 @@
 
 const path = require('path');
 const { mergeConfig, getDefaultConfig } = require('@react-native/metro-config');
-const { getDefaultConfig: getExpoDefaultConfig } = require('expo/metro-config');
 
 const localPackages = {
 	'@joplin/lib': path.resolve(__dirname, '../lib/'),
@@ -102,4 +101,4 @@ const config = {
 	watchFolders: watchedFolders,
 };
 
-module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+module.exports = mergeConfig(defaultConfig, config);
