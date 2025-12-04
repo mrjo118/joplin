@@ -103,7 +103,6 @@ const config = {
 };
 
 const expoDefaultConfig = getExpoDefaultConfig(__dirname);
-expoDefaultConfig.resolver.assetExts.push('hcscript');
 expoDefaultConfig.transformer.assetPlugins = ['expo-asset/tools/hashAssetFiles'];
 
 module.exports = mergeConfig(defaultConfig, expoDefaultConfig, config);
