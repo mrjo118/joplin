@@ -102,4 +102,16 @@ const config = {
 	watchFolders: watchedFolders,
 };
 
-module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+const expoDefaultConfig = getExpoDefaultConfig(__dirname);
+
+// Remove expo-asset hashing, which breaks vector-icons fonts
+expoDefaultConfig.transformer.assetPlugins = expoDefaultConfig.transformer.assetPlugins?.filter(
+	plugin => plugin !== 'expo-asset/tools/hashAssetFiles',
+);
+
+// Ensure TTF fonts are preserved - some Expo presets remove or reorder assetExts
+if (!expoDefaultConfig.resolver.assetExts.includes('ttf')) {
+	expoDefaultConfig.resolver.assetExts.push('ttf');
+}
+
+module.exports = mergeConfig(defaultConfig, expoDefaultConfig, config);
