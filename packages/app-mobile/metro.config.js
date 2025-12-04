@@ -102,4 +102,13 @@ const config = {
 	watchFolders: watchedFolders,
 };
 
-module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+// Detect if this is an Android release build
+const isAndroidRelease = process.env.RN_PLATFORM === 'android' && process.env.REACT_NATIVE_ENV === 'release';
+
+if (isAndroidRelease) {
+	// Skip Expo config for Android release
+	module.exports = mergeConfig(defaultConfig, config);
+} else {
+	// Apply Expo config in all other cases
+	module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+}
