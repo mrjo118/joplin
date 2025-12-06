@@ -215,6 +215,9 @@ const uploadToGitHubRelease = async (projectName: string, tagName: string, isPre
 };
 
 async function main() {
+	process.env.METRO_ANDROID_RELEASE = '1';
+	console.info('Set METRO_ANDROID_RELEASE=1');
+
 	const argv = require('yargs').argv;
 
 	await gitPullTry(false);
