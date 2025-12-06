@@ -137,8 +137,9 @@ android {
 
 gradle.taskGraph.whenReady { graph ->
     if (graph.hasTask(':app:bundleRelease') || graph.hasTask(':app:assembleRelease')) {
-		def env = System.getenv() as java.util.Map
-		env.put("METRO_ANDROID_RELEASE", "1")
+        tasks.withType(Exec) { task ->
+            task.environment "METRO_ANDROID_RELEASE", "1"
+        }
     }
 }
 
