@@ -137,7 +137,9 @@ async function createRelease(projectName: string, releaseConfig: ReleaseConfig, 
 	let restoreDir = null;
 	let apkBuildCmd = '';
 	let apkCleanBuild = '';
-	const apkBuildCmdArgs = ['assembleRelease', `-PbuildDir=${buildDirName}`];
+	// cSpell:disable
+	const apkBuildCmdArgs = ['assembleRelease', `-PbuildDir=${buildDirName} -PMETRO_ANDROID_RELEASE=1`];
+	// cSpell:enable
 	if (await fileExists('/mnt/c/Windows/System32/cmd.exe')) {
 		await execCommandWithPipes('/mnt/c/Windows/System32/cmd.exe', ['/c', `cd packages\\app-mobile\\android && gradlew.bat ${apkBuildCmd}`]);
 		apkBuildCmd = '';
