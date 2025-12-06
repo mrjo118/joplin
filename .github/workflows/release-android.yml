@@ -41,6 +41,8 @@ jobs:
           sudo rm -rf /opt/ghc || true
 
       - name: Assemble Android Release
+        env:
+          METRO_ANDROID_RELEASE: 1
         run: |
           cd packages/app-mobile/android
           sed -i -- 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/' app/build.gradle
