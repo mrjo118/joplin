@@ -102,4 +102,8 @@ const config = {
 	watchFolders: watchedFolders,
 };
 
-module.exports = mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
+const isAndroidRelease = process.env.METRO_ANDROID_RELEASE === '1';
+
+module.exports = isAndroidRelease
+	? mergeConfig(defaultConfig, config)
+	: mergeConfig(defaultConfig, getExpoDefaultConfig(__dirname), config);
