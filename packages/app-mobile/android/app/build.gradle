@@ -135,6 +135,14 @@ android {
     }
 }
 
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(':app:bundleRelease') || graph.hasTask(':app:assembleRelease')) {
+        tasks.withType(Exec) { task ->
+            task.environment "METRO_ANDROID_RELEASE", "1"
+        }
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
