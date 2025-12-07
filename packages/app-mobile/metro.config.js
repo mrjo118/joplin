@@ -104,7 +104,7 @@ const config = {
 
 // For release builds of the Android app, do not use the expo default config, as this causes an issue with missing icons
 // See https://github.com/laurent22/joplin/issues/13854
-const isAndroid = process.cwd().includes(path.join('packages', 'app-mobile', 'android'));
+const isAndroid = process.argv.includes('--platform') && process.argv.includes('android');
 const isDev = process.argv.includes('--dev') && process.argv.includes('true');
 
 module.exports = isAndroid && !isDev
