@@ -7,7 +7,7 @@ import { Profile, ProfileConfig } from '@joplin/lib/services/profileConfig/types
 import useProfileConfig from './useProfileConfig';
 import { _ } from '@joplin/lib/locale';
 import { deleteProfileById } from '@joplin/lib/services/profileConfig';
-import { saveProfileConfig, switchProfile } from '../../services/profiles';
+import { getDatabaseName, getResourceDir, saveProfileConfig, switchProfile } from '../../services/profiles';
 import { themeStyle } from '../global-style';
 import shim from '@joplin/lib/shim';
 import { DialogContext } from '../DialogManager';
@@ -16,6 +16,7 @@ import { TextStyle } from 'react-native';
 import useOnLongPressProps from '../../utils/hooks/useOnLongPressProps';
 import { Dispatch } from 'redux';
 import NavService from '@joplin/lib/services/NavService';
+import * as RNFS from 'react-native-fs';
 
 interface Props {
 	themeId: number;
@@ -96,6 +97,9 @@ const ProfileListItem: React.FC<ProfileItemProps> = ({ profile, profileConfig, s
 		const doIt = async () => {
 			try {
 				const newConfig = deleteProfileById(profileConfig, profile.id);
+
+				await shim.fsDriver().remove(getResourceDir(profile, true));
+				await shim.fsDriver().unlink(`${RNFS.DocumentDirectoryPath}/${getDatabaseName(profile, true)}`);
 				await saveProfileConfig(newConfig);
 				setProfileConfigTime(Date.now());
 			} catch (error) {
