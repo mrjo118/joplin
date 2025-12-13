@@ -1,5 +1,5 @@
 # The goal of this action is to compile the Android debug build. That should
-# tell us automatically if something got broken when a dependency was changed.
+# tell us automatically if something got broken when a dependency was changed. 
 
 name: react-native-android-build-apk
 on: [pull_request]
