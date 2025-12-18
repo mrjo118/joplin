@@ -25,7 +25,7 @@
     "@types/node": "18.19.130",
     "jest": "29.7.0",
     "jest-environment-jsdom": "29.7.0",
-    "mermaid": "11.9.0",
+    "mermaid": "11.10.0",
     "ts-jest": "29.4.1",
     "typescript": "5.8.3"
   },
@@ -36,7 +36,7 @@
     "@types/json5": "2.2.0",
     "abcjs": "6.5.2",
     "font-awesome-filetypes": "2.1.0",
-    "fs-extra": "11.3.1",
+    "fs-extra": "11.3.2",
     "highlight.js": "11.11.1",
     "html-entities": "1.4.0",
     "json-stringify-safe": "5.0.1",
