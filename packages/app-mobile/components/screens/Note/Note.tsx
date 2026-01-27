@@ -73,7 +73,6 @@ import { defaultWindowId } from '@joplin/lib/reducer';
 import useVisiblePluginEditorViewIds from '@joplin/lib/hooks/plugins/useVisiblePluginEditorViewIds';
 import { SelectionRange } from '../../../contentScripts/markdownEditorBundle/types';
 import { EditorType } from '../../NoteEditor/types';
-import { IconButton } from 'react-native-paper';
 import { writeTextToCacheFile } from '../../../utils/ShareUtils';
 import shareFile from '../../../utils/shareFile';
 import NotePositionService from '@joplin/lib/services/NotePositionService';
@@ -158,7 +157,6 @@ interface State {
 	};
 
 	showSpeechToTextDialog: boolean;
-	multiline: boolean;
 }
 
 type ScrollEventSlice = { fraction: number };
@@ -233,7 +231,6 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			},
 
 			showSpeechToTextDialog: false,
-			multiline: false,
 		};
 
 		const initialCursorLocation = NotePositionService.instance().getCursorPosition(props.noteId, defaultWindowId).markdown;
@@ -535,7 +532,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			paddingLeft: theme.marginLeft,
 			borderBottomColor: theme.dividerColor,
 			borderBottomWidth: 1,
-			maxHeight: '40%',
+			height: theme.fontSize * 2.5 * 2, // TODO make maxHeight instead
 		};
 
 		styles.titleContainerTodo = { ...styles.titleContainer };
@@ -721,10 +718,6 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 		if (prevState.note.body !== this.state.note.body) {
 			this.emitEditorPluginUpdate_();
-		}
-
-		if (prevState.multiline !== this.state.multiline && this.titleTextFieldRef.current) {
-			focus('Note::focusUpdate::title', this.titleTextFieldRef.current);
 		}
 	}
 
@@ -1752,20 +1745,10 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 		const dueDate = Note.dueDateObject(note);
 
-		const titleToggleButton = Platform.OS === 'web' ? null :
-			<IconButton
-				icon={(!this.state.multiline && 'menu-down') || (this.state.multiline && 'menu-up')}
-				accessibilityLabel={(!this.state.multiline && _('Expand title')) || (this.state.multiline && _('Collapse title'))}
-				onPress={() => this.setState({ multiline: !this.state.multiline })}
-				size={30}
-				style={{ width: 30, height: 30, alignSelf: 'center' }}
-			/>;
-
 		const titleComp = (
 			<View style={titleContainerStyle}>
 				{isTodo && <Checkbox style={this.styles().checkbox} checked={!!Number(note.todo_completed)} onChange={this.todoCheckbox_change} />}
 				<TextInput
-					key={this.state.multiline ? 'multiLine' : 'singleLine'}
 					ref={this.titleTextFieldRef}
 					underlineColorAndroid="#ffffff00"
 					autoCapitalize="sentences"
@@ -1777,10 +1760,9 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 					placeholder={_('Add title')}
 					placeholderTextColor={theme.colorFaded}
 					editable={!this.state.readOnly}
-					multiline={this.state.multiline}
+					multiline={Platform.OS !== 'web'}
 					submitBehavior = "blurAndSubmit"
 				/>
-				{ titleToggleButton }
 			</View>
 		);
 
