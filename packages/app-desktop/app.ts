@@ -636,8 +636,17 @@ class Application extends BaseApplication {
 
 			ResourceService.runInBackground();
 
+			const handler = async () => {
+				// This is deferred until after the first sync completes (when sync is enabled), to avoid cleaning revisions
+				// which are already deleted on the sync target
+				RevisionService.instance().runInBackground();
+				eventManager.off(EventName.SyncAttemptCompleted, handler);
+			};
+			eventManager.on(EventName.SyncAttemptCompleted, handler);
+
 			if (Setting.value('env') === 'dev') {
 				void AlarmService.updateAllNotifications();
+				eventManager.emit(EventName.SyncAttemptCompleted);
 			} else {
 				// eslint-disable-next-line promise/prefer-await-to-then -- Old code before rule was applied
 				void reg.scheduleSync(1000).then(() => {
@@ -649,7 +658,6 @@ class Application extends BaseApplication {
 				});
 			}
 
-			RevisionService.instance().runInBackground();
 			this.startRotatingLogMaintenance(Setting.value('profileDir'));
 		});
 

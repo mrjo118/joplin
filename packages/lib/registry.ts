@@ -4,6 +4,7 @@ import shim from './shim';
 import SyncTargetRegistry from './SyncTargetRegistry';
 import { AnyAction, Dispatch } from 'redux';
 import Synchronizer from './Synchronizer';
+import eventManager, { EventName } from './eventManager';
 
 class Registry {
 
@@ -233,6 +234,11 @@ class Registry {
 						this.dispatch({ type: 'SYNC_PENDING_UPDATE', value: false });
 					}
 
+					if (newContext !== null) {
+						// This must be emitted after sync completes, but also when it is not triggered at all, such as when sync is disabled
+						eventManager.emit(EventName.SyncAttemptCompleted);
+					}
+					
 					this.timerCallbackCalls_.pop();
 				}
 			};

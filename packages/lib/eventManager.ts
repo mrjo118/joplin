@@ -21,6 +21,7 @@ export enum EventName {
 	NoteResourceIndexed = 'noteResourceIndexed',
 	WindowOpen = 'windowOpen',
 	WindowClose = 'windowClose',
+	SyncAttemptCompleted = 'syncAttemptCompleted',
 }
 
 interface ItemChangeEvent {
@@ -83,6 +84,7 @@ type EventArgs = {
 	[EventName.NoteResourceIndexed]: [];
 	[EventName.WindowOpen]: [WindowOpenEvent];
 	[EventName.WindowClose]: [WindowCloseEvent];
+	[EventName.SyncAttemptCompleted]: [];
 };
 
 type EventListenerCallbacks = {

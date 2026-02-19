@@ -92,6 +92,7 @@ import shim from '@joplin/lib/shim';
 import { Platform } from 'react-native';
 import VoiceTyping from '../services/voiceTyping/VoiceTyping';
 import whisper from '../services/voiceTyping/whisper';
+import eventManager, { EventName } from '@joplin/lib/eventManager';
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -419,7 +420,13 @@ const buildStartupTasks = (
 
 		// Collect revisions more frequently on mobile because it doesn't auto-save
 		// and it cannot collect anything when the app is not active.
-		RevisionService.instance().runInBackground(1000 * 30);
+		const handler = async () => {
+			// This is deferred until after the first sync completes (when sync is enabled), to avoid cleaning revisions
+			// which are already deleted on the sync target
+			RevisionService.instance().runInBackground(1000 * 30);
+			eventManager.off(EventName.SyncAttemptCompleted, handler);
+		};
+		eventManager.on(EventName.SyncAttemptCompleted, handler);
 
 		reg.setupRecurrentSync();
 
