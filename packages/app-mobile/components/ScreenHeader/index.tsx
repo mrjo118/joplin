@@ -70,6 +70,7 @@ interface ScreenHeaderProps {
 	showContextMenuButton?: boolean;
 	showPluginEditorButton?: boolean;
 	showBackButton?: boolean;
+	onBackButtonPress?: OnPressCallback;
 	showViewToggleButton?: boolean;
 	onViewTogglePress?: OnPressCallback;
 	viewToggleIconName?: string;
@@ -209,7 +210,9 @@ class ScreenHeaderComponent extends PureComponent<ScreenHeaderProps, ScreenHeade
 	}
 
 	private async backButton_press() {
-		if (this.props.noteSelectionEnabled) {
+		if (this.props.onBackButtonPress) {
+			this.props.onBackButtonPress();
+		} else if (this.props.noteSelectionEnabled) {
 			this.props.dispatch({ type: 'NOTE_SELECTION_END' });
 		} else {
 			await BackButtonService.back();
@@ -648,6 +651,7 @@ class ScreenHeaderComponent extends PureComponent<ScreenHeaderProps, ScreenHeade
 
 		let backButtonDisabled = !this.props.historyCanGoBack;
 		if (this.props.noteSelectionEnabled) backButtonDisabled = false;
+		if (this.props.onBackButtonPress) backButtonDisabled = false;
 		const headerItemDisabled = !(this.props.selectedNoteIds.length > 0);
 
 		const sideMenuComp = !showSideMenuButton ? null : sideMenuButton(this.styles(), () => this.sideMenuButton_press());

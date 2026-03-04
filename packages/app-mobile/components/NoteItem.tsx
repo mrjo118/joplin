@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { connect } from 'react-redux';
-import { Text, StyleSheet, TextStyle, ViewStyle, AccessibilityInfo } from 'react-native';
+import { Text, StyleSheet, TextStyle, ViewStyle, AccessibilityInfo, View, TouchableOpacity } from 'react-native';
 import Checkbox from './Checkbox';
 import Note from '@joplin/lib/models/Note';
 import time from '@joplin/lib/time';
@@ -12,6 +12,8 @@ import { Dispatch } from 'redux';
 import { NoteEntity } from '@joplin/lib/services/database/types';
 import useOnLongPressProps from '../utils/hooks/useOnLongPressProps';
 import MultiTouchableOpacity from './buttons/MultiTouchableOpacity';
+import Icon from './Icon';
+import noteReorderQueue from '../services/NoteReorderQueue';
 
 interface Props {
 	dispatch: Dispatch;
@@ -19,10 +21,18 @@ interface Props {
 	note: NoteEntity;
 	noteSelectionEnabled: boolean;
 	selectedNoteIds: string[];
+	// Props for reorder mode
+	noteIndex?: number;
+	totalNotes?: number;
+	notes?: NoteEntity[];
+	noteReorderModeEnabled?: boolean;
+	uncompletedTodosOnTop?: boolean;
+	showCompletedTodos?: boolean;
+	folderId?: string;
 }
 
 
-const useStyles = (themeId: number) => {
+const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
 	return useMemo(() => {
 		const theme = themeStyle(themeId);
 
@@ -42,12 +52,12 @@ const useStyles = (themeId: number) => {
 		};
 		const listItemPressableWithCheckbox: ViewStyle = {
 			...listItemPressable,
-			paddingRight: theme.marginRight,
+			paddingRight: noteReorderModeEnabled ? 0 : theme.marginRight,
 		};
 		const listItemPressableWithoutCheckbox: ViewStyle = {
 			...listItemPressable,
 			paddingLeft: theme.marginLeft,
-			paddingRight: theme.marginRight,
+			paddingRight: noteReorderModeEnabled ? 0 : theme.marginRight,
 			paddingTop: theme.itemMarginTop,
 			paddingBottom: theme.itemMarginBottom,
 		};
@@ -66,6 +76,30 @@ const useStyles = (themeId: number) => {
 
 		const selectionWrapperSelected = { ...selectionWrapper };
 		selectionWrapperSelected.backgroundColor = theme.selectedColor;
+
+		const reorderButtonsContainer: ViewStyle = {
+			flexDirection: 'row',
+			alignItems: 'center',
+			alignSelf: 'stretch',
+			backgroundColor: theme.backgroundColor,
+			paddingRight: theme.marginRight,
+		};
+
+		const reorderButton: ViewStyle = {
+			padding: 8,
+			justifyContent: 'center',
+			alignItems: 'center',
+		};
+
+		const reorderButtonDisabled: ViewStyle = {
+			...reorderButton,
+			opacity: theme.disabledOpacity,
+		};
+
+		const reorderIcon: TextStyle = {
+			fontSize: 22,
+			color: theme.color,
+		};
 
 		return StyleSheet.create({
 			listItem,
@@ -86,12 +120,17 @@ const useStyles = (themeId: number) => {
 				opacity: 0.4,
 			},
 			uncheckedOpacityStyle: { },
+			reorderButtonsContainer,
+			reorderButton,
+			reorderButtonDisabled,
+			reorderIcon,
 		});
-	}, [themeId]);
+	}, [themeId, noteReorderModeEnabled]);
 };
 
 const NoteItemComponent: React.FC<Props> = memo(props => {
-	const styles = useStyles(props.themeId);
+	const noteReorderModeEnabled = props.noteReorderModeEnabled ?? false;
+	const styles = useStyles(props.themeId, noteReorderModeEnabled);
 
 	const todoCheckbox_change = useCallback(async (checked: boolean) => {
 		if (!props.note) return;
@@ -109,6 +148,9 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		if (!props.note) return;
 		if (props.note.encryption_applied) return;
 
+		// In reorder mode, don't navigate to the note
+		if (noteReorderModeEnabled) return;
+
 		if (props.noteSelectionEnabled) {
 			props.dispatch({
 				type: 'NOTE_SELECTION_TOGGLE',
@@ -121,10 +163,12 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 				noteId: props.note.id,
 			});
 		}
-	}, [props.note, props.noteSelectionEnabled, props.dispatch]);
+	}, [props.note, props.noteSelectionEnabled, props.dispatch, noteReorderModeEnabled]);
 
 	const onLongPress = useCallback(() => {
 		if (!props.note) return;
+		// Disable long press in reorder mode
+		if (noteReorderModeEnabled) return;
 
 		if (!props.noteSelectionEnabled) {
 			AccessibilityInfo.announceForAccessibility(_('Entering selection mode'));
@@ -134,11 +178,103 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			type: props.noteSelectionEnabled ? 'NOTE_SELECTION_TOGGLE' : 'NOTE_SELECTION_START',
 			id: props.note.id,
 		});
-	}, [props.dispatch, props.note, props.noteSelectionEnabled]);
+	}, [props.dispatch, props.note, props.noteSelectionEnabled, noteReorderModeEnabled]);
 
-
+	// Determine if this note is an uncompleted todo
 	const note = props.note ?? {};
 	const isTodo = !!Number(note.is_todo);
+	const isUncompletedTodo = isTodo && !Number(note.todo_completed);
+
+	// Calculate boundary conditions for reorder buttons
+	const canMoveUp = useMemo(() => {
+		if (!noteReorderModeEnabled) return false;
+		const noteIndex = props.noteIndex ?? 0;
+		if (noteIndex === 0) return false;
+
+		// If uncompletedTodosOnTop is enabled, check if moving would cross the boundary
+		if (props.uncompletedTodosOnTop && props.notes) {
+			const prevNote = props.notes[noteIndex - 1];
+			const prevIsUncompletedTodo = !!prevNote?.is_todo && !prevNote?.todo_completed;
+
+			// If current note is NOT an uncompleted todo and the previous note IS an uncompleted todo,
+			// then we cannot move up (would cross the boundary)
+			if (!isUncompletedTodo && prevIsUncompletedTodo) {
+				return false;
+			}
+		}
+
+		return true;
+	}, [noteReorderModeEnabled, props.noteIndex, props.uncompletedTodosOnTop, props.notes, isUncompletedTodo]);
+
+	const canMoveDown = useMemo(() => {
+		if (!noteReorderModeEnabled) return false;
+		const noteIndex = props.noteIndex ?? 0;
+		const totalNotes = props.totalNotes ?? 0;
+		if (noteIndex >= totalNotes - 1) return false;
+
+		// If uncompletedTodosOnTop is enabled, check if moving would cross the boundary
+		if (props.uncompletedTodosOnTop && props.notes) {
+			const nextNote = props.notes[noteIndex + 1];
+			const nextIsUncompletedTodo = !!nextNote?.is_todo && !nextNote?.todo_completed;
+
+			// If current note IS an uncompleted todo and the next note is NOT an uncompleted todo,
+			// then we cannot move down (would cross the boundary)
+			if (isUncompletedTodo && !nextIsUncompletedTodo) {
+				return false;
+			}
+		}
+
+		return true;
+	}, [noteReorderModeEnabled, props.noteIndex, props.totalNotes, props.uncompletedTodosOnTop, props.notes, isUncompletedTodo]);
+
+	const handleMoveUp = useCallback(() => {
+		if (!canMoveUp || !props.folderId || !props.note?.id) return;
+		const noteIndex = props.noteIndex ?? 0;
+		const targetIndex = noteIndex - 1;
+
+		// Optimistically update the UI by dispatching a local reorder action
+		props.dispatch({
+			type: 'NOTE_REORDER_LOCAL',
+			noteId: props.note.id,
+			fromIndex: noteIndex,
+			toIndex: targetIndex,
+		});
+
+		// Queue the save operation (fire and forget)
+		noteReorderQueue.enqueue(
+			props.folderId,
+			[props.note.id],
+			targetIndex,
+			props.uncompletedTodosOnTop ?? false,
+			props.showCompletedTodos ?? true,
+		);
+	}, [canMoveUp, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
+
+	const handleMoveDown = useCallback(() => {
+		if (!canMoveDown || !props.folderId || !props.note?.id) return;
+		const noteIndex = props.noteIndex ?? 0;
+		// When moving down, the target index for insertNotesAt needs to be +2
+		// because insertNotesAt inserts BEFORE the target index
+		const targetIndex = noteIndex + 2;
+
+		// Optimistically update the UI by dispatching a local reorder action
+		props.dispatch({
+			type: 'NOTE_REORDER_LOCAL',
+			noteId: props.note.id,
+			fromIndex: noteIndex,
+			toIndex: noteIndex + 1,
+		});
+
+		// Queue the save operation (fire and forget)
+		noteReorderQueue.enqueue(
+			props.folderId,
+			[props.note.id],
+			targetIndex,
+			props.uncompletedTodosOnTop ?? false,
+			props.showCompletedTodos ?? true,
+		);
+	}, [canMoveDown, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
+
 	const checkboxChecked = !!Number(note.todo_completed);
 
 	const checkboxStyle = styles.checkboxStyle;
@@ -159,13 +295,43 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		accessibilityLabel={_('to-do: %s', noteTitle)}
 	/> : null;
 
+	// Render reorder buttons when in reorder mode
+	const reorderButtons = noteReorderModeEnabled ? (
+		<View style={styles.reorderButtonsContainer}>
+			<TouchableOpacity
+				onPress={handleMoveUp}
+				disabled={!canMoveUp}
+				style={canMoveUp ? styles.reorderButton : styles.reorderButtonDisabled}
+				accessibilityLabel={_('Move up')}
+				accessibilityRole="button"
+				accessibilityState={{ disabled: !canMoveUp }}
+			>
+				<Icon name="ionicon chevron-up" style={styles.reorderIcon} accessibilityLabel={null} />
+			</TouchableOpacity>
+			<TouchableOpacity
+				onPress={handleMoveDown}
+				disabled={!canMoveDown}
+				style={canMoveDown ? styles.reorderButton : styles.reorderButtonDisabled}
+				accessibilityLabel={_('Move down')}
+				accessibilityRole="button"
+				accessibilityState={{ disabled: !canMoveDown }}
+			>
+				<Icon name="ionicon chevron-down" style={styles.reorderIcon} accessibilityLabel={null} />
+			</TouchableOpacity>
+		</View>
+	) : null;
+
 	const pressableProps = {
 		style: isTodo ? styles.listItemPressableWithCheckbox : styles.listItemPressableWithoutCheckbox,
-		accessibilityHint: props.noteSelectionEnabled ? '' : _('Opens note'),
+		accessibilityHint: props.noteSelectionEnabled ? '' : noteReorderModeEnabled ? '' : _('Opens note'),
 		'aria-pressed': props.noteSelectionEnabled ? isSelected : undefined,
 		accessibilityState: { selected: isSelected },
 		...onLongPressProps,
 	};
+
+	// Text style with overflow handling for reorder mode
+	const textStyle = noteReorderModeEnabled ? [listItemTextStyle, { overflow: 'hidden' as const }] : listItemTextStyle;
+
 	return (
 		<MultiTouchableOpacity
 			{...pressableProps}
@@ -174,8 +340,9 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			}}
 			onPress={onPress}
 			beforePressable={todoCheckbox}
+			afterPressable={reorderButtons}
 		>
-			<Text style={listItemTextStyle}>{noteTitle}</Text>
+			<Text style={textStyle} numberOfLines={noteReorderModeEnabled ? 1 : undefined}>{noteTitle}</Text>
 		</MultiTouchableOpacity>
 	);
 });

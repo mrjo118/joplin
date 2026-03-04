@@ -4,7 +4,9 @@ import { Animated, StyleSheet, Pressable, ViewProps, PressableProps } from 'reac
 
 interface Props extends PressableProps {
 	// Nodes that need to change opacity but shouldn't be included in the main touchable
-	beforePressable: React.ReactNode;
+	beforePressable?: React.ReactNode;
+	// Nodes rendered after the pressable
+	afterPressable?: React.ReactNode;
 	// Children of the main pressable
 	children: React.ReactNode;
 	onPress: ()=> void;
@@ -14,7 +16,7 @@ interface Props extends PressableProps {
 
 // A TouchableOpacity that can contain multiple pressable items still within the region that
 // changes opacity
-const MultiTouchableOpacity: React.FC<Props> = ({ beforePressable, children, onPress, containerProps = {}, ...pressableProps }) => {
+const MultiTouchableOpacity: React.FC<Props> = ({ beforePressable, afterPressable, children, onPress, containerProps = {}, ...pressableProps }) => {
 	// See https://blog.logrocket.com/react-native-touchable-vs-pressable-components/
 	// for more about animating Pressable buttons.
 	const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -59,6 +61,7 @@ const MultiTouchableOpacity: React.FC<Props> = ({ beforePressable, children, onP
 		<Animated.View {...containerProps} style={[styles.container, containerProps.style]}>
 			{beforePressable}
 			{button}
+			{afterPressable}
 		</Animated.View>
 	);
 };

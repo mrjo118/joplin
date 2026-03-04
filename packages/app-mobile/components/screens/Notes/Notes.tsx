@@ -13,7 +13,7 @@ import { _ } from '@joplin/lib/locale';
 import { BaseScreenComponent } from '../../base-screen';
 import { AppState } from '../../../utils/types';
 import { FolderEntity, NoteEntity, TagEntity } from '@joplin/lib/services/database/types';
-import { itemIsInTrash } from '@joplin/lib/services/trash';
+import { getTrashFolderId, itemIsInTrash } from '@joplin/lib/services/trash';
 import AccessibleView from '../../accessibility/AccessibleView';
 import { Dispatch } from 'redux';
 import { DialogContext, DialogControl } from '../../DialogManager';
@@ -34,6 +34,7 @@ interface Props {
 	uncompletedTodosOnTop: boolean;
 	showCompletedTodos: boolean;
 	noteSelectionEnabled: boolean;
+	noteReorderModeEnabled: boolean;
 
 	selectedNoteIds: string[];
 	activeFolderId: string;
@@ -70,7 +71,7 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 	};
 
 	private sortButton_press = async () => {
-		type IdType = { name: string; value: string|boolean };
+		type IdType = { name: string; value: string|boolean; action?: string };
 		const buttons: MenuChoice<IdType>[] = [];
 		const sortNoteOptions = Setting.enumOptions('notes.sortOrder.field');
 
@@ -102,11 +103,36 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			id: { name: 'showCompletedTodos', value: !Setting.value('showCompletedTodos') },
 		});
 
+		// Add re-order notes option when custom sort is selected
+		if (this.shouldShowReOrderNotes()) {
+			buttons.push({
+				text: _('Re-order notes'),
+				checked: false,
+				id: { name: '', value: '', action: 'reorder' },
+			});
+		}
+
 		const r = await this.props.dialogManager.showMenu(Setting.settingMetadata('notes.sortOrder.field').label(), buttons);
 		if (!r) return;
 
+		if (r.action === 'reorder') {
+			this.props.dispatch({ type: 'NOTE_REORDER_MODE_START' });
+			return;
+		}
+
 		Setting.setValue(r.name, r.value);
 	};
+
+	private shouldShowReOrderNotes(): boolean {
+		const { notesParentType, folders, selectedFolderId } = this.props;
+
+		if (Setting.value('notes.sortOrder.field') !== 'order') return false;
+		if (notesParentType === 'Folder') {
+			const folder = Folder.byId(folders, selectedFolderId);
+			return folder && folder.id !== Folder.conflictFolderId() && folder.id !== getTrashFolderId() && folder.deleted_time === 0;
+		}
+		return false;
+	}
 
 	public styles() {
 		if (!this.styles_) this.styles_ = {};
@@ -225,6 +251,10 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 		return this.folderPickerOptions_;
 	}
 
+	private exitReorderMode = () => {
+		this.props.dispatch({ type: 'NOTE_REORDER_MODE_END' });
+	};
+
 	public render() {
 		const parent = this.parentItem();
 		const theme = themeStyle(this.props.themeId);
@@ -257,10 +287,30 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			return null;
 		};
 
-		const actionButtonComp = this.props.noteSelectionEnabled || !this.props.visible ? null : makeActionButtonComp();
+		const actionButtonComp = this.props.noteSelectionEnabled || this.props.noteReorderModeEnabled || !this.props.visible ? null : makeActionButtonComp();
 
 		// Ensure that screen readers can't focus the notes list when it isn't visible.
 		const accessibilityHidden = !this.props.visible;
+
+		// In reorder mode, show a different header with "Re-order notes" title and back button
+		if (this.props.noteReorderModeEnabled) {
+			return (
+				<AccessibleView
+					style={rootStyle}
+					inert={accessibilityHidden}
+				>
+					<ScreenHeader
+						title={_('Re-order notes')}
+						showBackButton={true}
+						onBackButtonPress={this.exitReorderMode}
+						showSearchButton={false}
+						showSideMenuButton={false}
+						showContextMenuButton={false}
+					/>
+					<NoteList />
+				</AccessibleView>
+			);
+		}
 
 		return (
 			<AccessibleView
@@ -304,6 +354,7 @@ const NotesScreen = connect((state: AppState) => {
 		showCompletedTodos: state.settings.showCompletedTodos,
 		themeId: state.settings.theme,
 		noteSelectionEnabled: state.noteSelectionEnabled,
+		noteReorderModeEnabled: state.noteReorderModeEnabled,
 		notesOrder: stateUtils.notesOrder(state.settings),
 	};
 })(NotesScreenWrapper);

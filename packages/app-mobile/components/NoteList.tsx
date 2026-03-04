@@ -22,6 +22,9 @@ interface NoteListProps {
 	folders: FolderEntity[];
 	noteSelectionEnabled?: boolean;
 	selectedFolderId: string|null;
+	noteReorderModeEnabled: boolean;
+	uncompletedTodosOnTop: boolean;
+	showCompletedTodos: boolean;
 }
 
 class NoteListComponent extends Component<NoteListProps> {
@@ -90,7 +93,16 @@ class NoteListComponent extends Component<NoteListProps> {
 			return <FlatList
 				ref={ref => { this.rootRef_ = ref; }}
 				data={this.props.items}
-				renderItem={({ item }) => <NoteItem note={item} />}
+				renderItem={({ item, index }) => <NoteItem
+					note={item}
+					noteIndex={index}
+					totalNotes={this.props.items.length}
+					notes={this.props.items}
+					noteReorderModeEnabled={this.props.noteReorderModeEnabled}
+					uncompletedTodosOnTop={this.props.uncompletedTodosOnTop}
+					showCompletedTodos={this.props.showCompletedTodos}
+					folderId={this.props.selectedFolderId}
+				/>}
 				keyExtractor={item => item.id}
 			/>;
 		} else {
@@ -120,6 +132,9 @@ const NoteList = connect((state: AppState) => {
 		themeId: state.settings.theme,
 		noteSelectionEnabled: state.noteSelectionEnabled,
 		selectedFolderId: state.selectedFolderId,
+		noteReorderModeEnabled: state.noteReorderModeEnabled,
+		uncompletedTodosOnTop: state.settings.uncompletedTodosOnTop,
+		showCompletedTodos: state.settings.showCompletedTodos,
 	};
 })(NoteListComponent);
 

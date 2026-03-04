@@ -13,4 +13,5 @@ export interface AppState extends State {
 	noteEditorVisible: boolean;
 	syncWizardVisible: boolean;
 	noteVisiblePanes: string[];
+	noteReorderModeEnabled: boolean;
 }

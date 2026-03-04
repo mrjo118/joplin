@@ -1304,6 +1304,21 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 			}
 			break;
 
+		case 'NOTE_REORDER_LOCAL':
+
+			{
+				// Optimistic UI update for note reordering - swaps note positions locally
+				const fromIndex = action.fromIndex;
+				const toIndex = action.toIndex;
+				if (fromIndex !== toIndex && fromIndex >= 0 && toIndex >= 0 && fromIndex < draft.notes.length && toIndex < draft.notes.length) {
+					const newNotes = [...draft.notes];
+					const [movedNote] = newNotes.splice(fromIndex, 1);
+					newNotes.splice(toIndex, 0, movedNote);
+					draft.notes = newNotes;
+				}
+			}
+			break;
+
 		case 'TAG_DELETE':
 			handleItemDelete(draft, action);
 			draft.selectedNoteTags = removeItemFromArray(draft.selectedNoteTags, 'id', action.id);
