@@ -1,3 +1,4 @@
+// cspell:words viewability
 import * as React from 'react';
 
 import { Component } from 'react';
@@ -86,6 +87,39 @@ class NoteListComponent extends Component<NoteListProps> {
 		}
 	}
 
+	// Track visible items
+	private viewableItems_: { index: number; item: NoteEntity }[] = [];
+
+	private onViewableItemsChanged = ({ viewableItems }: { viewableItems: { index: number; item: NoteEntity }[] }) => {
+		this.viewableItems_ = viewableItems;
+	};
+
+	// Optional config for FlatList
+	private viewabilityConfig_ = { viewAreaCoveragePercentThreshold: 5 };
+
+	// Scroll function passed to NoteItem
+	private scrollIntoView = (index: number) => {
+		const firstVisible = this.viewableItems_[0]?.index ?? 0;
+		const lastVisible = this.viewableItems_[this.viewableItems_.length - 1]?.index ?? 0;
+
+		if (index < firstVisible || index > lastVisible) {
+			try {
+				this.rootRef_?.scrollToIndex({
+					index: index,
+					viewPosition: 0.5, // center item on screen
+					animated: true,
+				});
+			} catch (error) {
+				// If index is out of range, fallback to scrolling to end or start
+				if (index < 0) {
+					this.rootRef_?.scrollToOffset({ offset: 0, animated: true });
+				} else if (this.props.items.length) {
+					this.rootRef_?.scrollToOffset({ offset: this.props.items.length * 100, animated: true });
+				}
+			}
+		}
+	};
+
 	public render() {
 		// `enableEmptySections` is to fix this warning: https://github.com/FaridSafi/react-native-gifted-listview/issues/39
 
@@ -102,8 +136,11 @@ class NoteListComponent extends Component<NoteListProps> {
 					uncompletedTodosOnTop={this.props.uncompletedTodosOnTop}
 					showCompletedTodos={this.props.showCompletedTodos}
 					folderId={this.props.selectedFolderId}
+					scrollIntoView={this.scrollIntoView}
 				/>}
 				keyExtractor={item => item.id}
+				onViewableItemsChanged={this.onViewableItemsChanged}
+				viewabilityConfig={this.viewabilityConfig_}
 			/>;
 		} else {
 			if (!Folder.atLeastOneRealFolderExists(this.props.folders)) {

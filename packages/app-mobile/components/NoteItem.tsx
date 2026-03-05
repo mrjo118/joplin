@@ -28,6 +28,7 @@ interface Props {
 	uncompletedTodosOnTop?: boolean;
 	showCompletedTodos?: boolean;
 	folderId?: string;
+	scrollIntoView?: (index: number)=> void;
 }
 
 
@@ -245,7 +246,9 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			props.uncompletedTodosOnTop ?? false,
 			props.showCompletedTodos ?? true,
 		);
-	}, [canMoveUp, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
+
+		props.scrollIntoView?.(targetIndex);
+	}, [canMoveUp, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch, props.scrollIntoView]);
 
 	const handleMoveDown = useCallback(() => {
 		if (!canMoveDown || !props.folderId || !props.note?.id) return;
@@ -268,7 +271,9 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			props.uncompletedTodosOnTop ?? false,
 			props.showCompletedTodos ?? true,
 		);
-	}, [canMoveDown, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
+
+		props.scrollIntoView?.(targetIndex);
+	}, [canMoveDown, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch, props.scrollIntoView]);
 
 	const checkboxChecked = !!Number(note.todo_completed);
 
