@@ -13,7 +13,6 @@ import { NoteEntity } from '@joplin/lib/services/database/types';
 import useOnLongPressProps from '../utils/hooks/useOnLongPressProps';
 import MultiTouchableOpacity from './buttons/MultiTouchableOpacity';
 import Icon from './Icon';
-import noteReorderQueue from '../services/NoteReorderQueue';
 
 interface Props {
 	dispatch: Dispatch;
@@ -232,7 +231,6 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		const noteIndex = props.noteIndex ?? 0;
 		const targetIndex = noteIndex - 1;
 
-		// Optimistically update the UI by dispatching a local reorder action
 		props.dispatch({
 			type: 'NOTE_REORDER_LOCAL',
 			noteId: props.note.id,
@@ -240,8 +238,7 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			toIndex: targetIndex,
 		});
 
-		// Queue the save operation (fire and forget)
-		noteReorderQueue.enqueue(
+		void Note.insertNotesAt(
 			props.folderId,
 			[props.note.id],
 			targetIndex,
@@ -257,7 +254,6 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		// because insertNotesAt inserts BEFORE the target index
 		const targetIndex = noteIndex + 2;
 
-		// Optimistically update the UI by dispatching a local reorder action
 		props.dispatch({
 			type: 'NOTE_REORDER_LOCAL',
 			noteId: props.note.id,
@@ -265,8 +261,7 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 			toIndex: noteIndex + 1,
 		});
 
-		// Queue the save operation (fire and forget)
-		noteReorderQueue.enqueue(
+		void Note.insertNotesAt(
 			props.folderId,
 			[props.note.id],
 			targetIndex,
