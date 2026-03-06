@@ -26,13 +26,43 @@ interface DragListContainerProps<T> {
 
 function DragListContainer<T>(props: DragListContainerProps<T>) {
 	const insets = useSafeAreaInsets();
+	const [isDragging, setIsDragging] = React.useState(false);
+
+	const handleDragBegin = React.useCallback(() => {
+		setIsDragging(true);
+	}, []);
+
+	const handleDragEnd = React.useCallback(() => {
+		setIsDragging(false);
+	}, []);
+
+	// Wrap renderItem to inject drag state handlers
+	const wrappedRenderItem = React.useCallback((info: DragListRenderItemInfo<T>) => {
+		const originalOnDragStart = info.onDragStart;
+		const originalOnDragEnd = info.onDragEnd;
+
+		const wrappedInfo = {
+			...info,
+			onDragStart: () => {
+				handleDragBegin();
+				originalOnDragStart();
+			},
+			onDragEnd: () => {
+				handleDragEnd();
+				originalOnDragEnd();
+			},
+		};
+		return props.renderItem(wrappedInfo);
+	}, [props.renderItem, handleDragBegin, handleDragEnd]);
+
 	return (
 		<View style={{ flex: 1, marginBottom: insets.bottom }}>
 			<DragList
 				data={props.data}
-				renderItem={props.renderItem}
+				renderItem={wrappedRenderItem}
 				keyExtractor={props.keyExtractor}
 				onReordered={props.onReordered}
+				scrollEnabled={!isDragging}
 			/>
 		</View>
 	);
