@@ -267,16 +267,6 @@ const appReducer = (state = appDefaultState, action: any) => {
 				noteVisiblePanes: Array.isArray(action.panes) && action.panes.length ? action.panes : ['viewer'],
 			};
 			break;
-
-		case 'NOTE_REORDER_MODE_START':
-			newState = { ...state };
-			newState.noteReorderModeEnabled = true;
-			break;
-
-		case 'NOTE_REORDER_MODE_END':
-			newState = { ...state };
-			newState.noteReorderModeEnabled = false;
-			break;
 		}
 	} catch (error) {
 		error.message = `In reducer: ${error.message} Action: ${JSON.stringify(action)}`;

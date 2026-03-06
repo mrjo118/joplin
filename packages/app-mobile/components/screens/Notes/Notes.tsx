@@ -17,9 +17,10 @@ import { getTrashFolderId, itemIsInTrash } from '@joplin/lib/services/trash';
 import AccessibleView from '../../accessibility/AccessibleView';
 import { Dispatch } from 'redux';
 import { DialogContext, DialogControl } from '../../DialogManager';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { MenuChoice } from '../../DialogManager/types';
 import NewNoteButton from './NewNoteButton';
+import RearrangeNoteModal from './RearrangeNoteModal';
 
 interface Props {
 	dispatch: Dispatch;
@@ -34,8 +35,8 @@ interface Props {
 	uncompletedTodosOnTop: boolean;
 	showCompletedTodos: boolean;
 	noteSelectionEnabled: boolean;
-	noteReorderModeEnabled: boolean;
 
+	notes: NoteEntity[];
 	selectedNoteIds: string[];
 	activeFolderId: string;
 	selectedFolderId: string;
@@ -50,6 +51,8 @@ interface State {
 
 interface ComponentProps extends Props {
 	dialogManager: DialogControl;
+	rearrangeModalVisible: boolean;
+	setRearrangeModalVisible: (visible: boolean)=> void;
 }
 
 type Styles = Record<string, ViewStyle|TextStyle>;
@@ -64,14 +67,13 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 	}
 
 	private onAppStateChange_ = async () => {
-		// Force an update to the notes list when app state changes
 		const newProps = { ...this.props };
 		newProps.notesSource = '';
 		await this.refreshNotes(newProps);
 	};
 
 	private sortButton_press = async () => {
-		type IdType = { name: string; value: string|boolean; action?: string };
+		type IdType = { name: string; value: string|boolean };
 		const buttons: MenuChoice<IdType>[] = [];
 		const sortNoteOptions = Setting.enumOptions('notes.sortOrder.field');
 
@@ -103,27 +105,13 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			id: { name: 'showCompletedTodos', value: !Setting.value('showCompletedTodos') },
 		});
 
-		// Add re-order notes option when custom sort is selected
-		if (this.shouldShowReOrderNotes()) {
-			buttons.push({
-				text: _('Re-order notes'),
-				checked: false,
-				id: { name: '', value: '', action: 'reorder' },
-			});
-		}
-
 		const r = await this.props.dialogManager.showMenu(Setting.settingMetadata('notes.sortOrder.field').label(), buttons);
 		if (!r) return;
-
-		if (r.action === 'reorder') {
-			this.props.dispatch({ type: 'NOTE_REORDER_MODE_START' });
-			return;
-		}
 
 		Setting.setValue(r.name, r.value);
 	};
 
-	private shouldShowReOrderNotes(): boolean {
+	public canRearrangeNotes(): boolean {
 		const { notesParentType, folders, selectedFolderId } = this.props;
 
 		if (Setting.value('notes.sortOrder.field') !== 'order') return false;
@@ -186,7 +174,6 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 		});
 
 		if (source === props.notesSource) return;
-		// For now, search refresh is handled by the search screen.
 		if (props.notesParentType === 'Search') return;
 
 		let notes: NoteEntity[] = [];
@@ -234,7 +221,6 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			output = { id: this.props.selectedSmartFilterId, title: _('All notes') };
 		} else {
 			return null;
-			// throw new Error('Invalid parent type: ' + props.notesParentType);
 		}
 		return output;
 	}
@@ -251,8 +237,31 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 		return this.folderPickerOptions_;
 	}
 
-	private exitReorderMode = () => {
-		this.props.dispatch({ type: 'NOTE_REORDER_MODE_END' });
+	private onRearrangeButtonPress = () => {
+		this.props.setRearrangeModalVisible(true);
+	};
+
+	private onRearrangeModalClose = () => {
+		this.props.setRearrangeModalVisible(false);
+	};
+
+	private onRearrangeConfirm = async (targetIndex: number) => {
+		const selectedNoteId = this.props.selectedNoteIds[0];
+		if (!selectedNoteId || !this.props.selectedFolderId) return;
+
+		this.props.setRearrangeModalVisible(false);
+		this.props.dispatch({ type: 'NOTE_SELECTION_END' });
+
+		await Note.insertNotesAt(
+			this.props.selectedFolderId,
+			[selectedNoteId],
+			targetIndex,
+			this.props.uncompletedTodosOnTop,
+			this.props.showCompletedTodos,
+		);
+
+		const newProps = { ...this.props, notesSource: '' };
+		await this.refreshNotes(newProps);
 	};
 
 	public render() {
@@ -287,35 +296,17 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			return null;
 		};
 
-		const actionButtonComp = this.props.noteSelectionEnabled || this.props.noteReorderModeEnabled || !this.props.visible ? null : makeActionButtonComp();
+		const actionButtonComp = this.props.noteSelectionEnabled || !this.props.visible ? null : makeActionButtonComp();
 
-		// Ensure that screen readers can't focus the notes list when it isn't visible.
 		const accessibilityHidden = !this.props.visible;
 
-		// In reorder mode, show a different header with "Re-order notes" title and back button
-		if (this.props.noteReorderModeEnabled) {
-			return (
-				<AccessibleView
-					style={rootStyle}
-					inert={accessibilityHidden}
-				>
-					<ScreenHeader
-						title={_('Re-order notes')}
-						showBackButton={true}
-						onBackButtonPress={this.exitReorderMode}
-						showSearchButton={false}
-						showSideMenuButton={false}
-						showContextMenuButton={false}
-					/>
-					<NoteList />
-				</AccessibleView>
-			);
-		}
+		const canRearrange = this.canRearrangeNotes();
+		const singleNoteSelected = this.props.selectedNoteIds.length === 1;
+		const selectedNote = singleNoteSelected ? this.props.notes.find(n => n.id === this.props.selectedNoteIds[0]) : null;
 
 		return (
 			<AccessibleView
 				style={rootStyle}
-
 				inert={accessibilityHidden}
 			>
 				<ScreenHeader
@@ -325,9 +316,21 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 					folderPickerOptions={this.folderPickerOptions()}
 					showSearchButton={true}
 					showSideMenuButton={true}
+					showRearrangeButton={canRearrange && this.props.noteSelectionEnabled}
+					rearrangeButtonDisabled={!singleNoteSelected}
+					onRearrangeButtonPress={this.onRearrangeButtonPress}
 				/>
 				<NoteList />
 				{actionButtonComp}
+				<RearrangeNoteModal
+					visible={this.props.rearrangeModalVisible}
+					selectedNote={selectedNote}
+					notes={this.props.notes}
+					onClose={this.onRearrangeModalClose}
+					onConfirm={this.onRearrangeConfirm}
+					themeId={this.props.themeId}
+					uncompletedTodosOnTop={this.props.uncompletedTodosOnTop}
+				/>
 			</AccessibleView>
 		);
 	}
@@ -335,7 +338,16 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 
 const NotesScreenWrapper: React.FC<Props> = props => {
 	const dialogManager = useContext(DialogContext);
-	return <NotesScreenComponent {...props} dialogManager={dialogManager}/>;
+	const [rearrangeModalVisible, setRearrangeModalVisible] = useState(false);
+
+	return (
+		<NotesScreenComponent
+			{...props}
+			dialogManager={dialogManager}
+			rearrangeModalVisible={rearrangeModalVisible}
+			setRearrangeModalVisible={setRearrangeModalVisible}
+		/>
+	);
 };
 
 const NotesScreen = connect((state: AppState) => {
@@ -354,7 +366,6 @@ const NotesScreen = connect((state: AppState) => {
 		showCompletedTodos: state.settings.showCompletedTodos,
 		themeId: state.settings.theme,
 		noteSelectionEnabled: state.noteSelectionEnabled,
-		noteReorderModeEnabled: state.noteReorderModeEnabled,
 		notesOrder: stateUtils.notesOrder(state.settings),
 	};
 })(NotesScreenWrapper);

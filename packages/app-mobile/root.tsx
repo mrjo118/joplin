@@ -271,7 +271,6 @@ interface AppComponentProps {
 	historyCanGoBack: boolean;
 	showSideMenu: boolean;
 	noteSelectionEnabled: boolean;
-	noteReorderModeEnabled: boolean;
 }
 
 interface AppComponentState {
@@ -565,11 +564,6 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 			return true;
 		}
 
-		if (this.props.noteReorderModeEnabled) {
-			this.props.dispatch({ type: 'NOTE_REORDER_MODE_END' });
-			return true;
-		}
-
 		if (this.props.showSideMenu) {
 			this.props.dispatch({ type: 'SIDE_MENU_CLOSE' });
 			return true;
@@ -715,10 +709,6 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 			sideMenuContent = <SideMenuContent/>;
 		}
 
-		if (this.props.noteReorderModeEnabled) {
-			disableSideMenuGestures = true;
-		}
-
 		const appNavInit = {
 			Notes: { screen: NotesScreen },
 			Note: { screen: NoteScreen },
@@ -860,7 +850,6 @@ const mapStateToProps = (state: AppState) => {
 		syncStarted: state.syncStarted,
 		appState: state.appState,
 		noteSelectionEnabled: state.noteSelectionEnabled,
-		noteReorderModeEnabled: state.noteReorderModeEnabled,
 		selectedFolderId: state.selectedFolderId,
 		routeName: state.route.routeName,
 		themeId: state.settings.theme,

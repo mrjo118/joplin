@@ -81,6 +81,10 @@ interface ScreenHeaderProps {
 	historyCanGoBack?: boolean;
 	showShouldUpgradeSyncTargetMessage?: boolean;
 
+	showRearrangeButton?: boolean;
+	rearrangeButtonDisabled?: boolean;
+	onRearrangeButtonPress?: OnPressCallback;
+
 	themeId: number;
 }
 
@@ -406,6 +410,26 @@ class ScreenHeaderComponent extends PureComponent<ScreenHeaderProps, ScreenHeade
 		}
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
+		function rearrangeButton(styles: any, onPress: OnPressCallback, disabled: boolean) {
+			return (
+				<IconButton
+					onPress={onPress}
+					disabled={disabled}
+
+					themeId={themeId}
+					description={_('Re-arrange')}
+					accessibilityHint={
+						disabled ? _('Select exactly one note to re-arrange') : _('Move selected note to a different position')
+					}
+					contentWrapperStyle={disabled ? styles.iconButtonDisabled : styles.iconButton}
+
+					iconName="ionicon swap-vertical"
+					iconStyle={styles.topIcon}
+				/>
+			);
+		}
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 		function searchButton(styles: any, onPress: OnPressCallback) {
 			return (
 				<IconButton
@@ -658,6 +682,7 @@ class ScreenHeaderComponent extends PureComponent<ScreenHeaderProps, ScreenHeade
 		const backButtonComp = !showBackButton ? null : backButton(this.styles(), () => this.backButton_press(), backButtonDisabled);
 		const pluginPanelsComp = pluginPanelToggleButton(this.styles(), () => this.pluginPanelToggleButton_press());
 		const selectAllButtonComp = !showSelectAllButton ? null : selectAllButton(this.styles(), () => this.selectAllButton_press());
+		const rearrangeButtonComp = !this.props.showRearrangeButton ? null : rearrangeButton(this.styles(), () => this.props.onRearrangeButtonPress?.(), !!this.props.rearrangeButtonDisabled);
 		const searchButtonComp = !showSearchButton ? null : searchButton(this.styles(), () => this.searchButton_press());
 		const customDeleteButtonComp = this.props.onDeleteButtonPress ? customDeleteButton(this.styles(), this.props.onDeleteButtonPress) : null;
 		const deleteButtonComp = showStandardDeleteButton ? deleteButton(this.styles(), () => this.deleteButton_press(), headerItemDisabled) : null;
@@ -672,6 +697,7 @@ class ScreenHeaderComponent extends PureComponent<ScreenHeaderProps, ScreenHeade
 			{pluginPanelsComp}
 			{togglePluginEditorButton}
 			{selectAllButtonComp}
+			{rearrangeButtonComp}
 			{searchButtonComp}
 			{deleteButtonComp}
 			{customDeleteButtonComp}
