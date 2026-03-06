@@ -201,7 +201,7 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		<Pressable
 			onLongPress={props.onDragStart}
 			onPressOut={props.onDragEnd}
-			delayLongPress={200}
+			delayLongPress={150}
 			style={styles.dragHandleContainer}
 			accessibilityLabel={_('Long press to drag and reorder')}
 			accessibilityRole="button"
