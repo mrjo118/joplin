@@ -1,3 +1,4 @@
+// cspell:words draglist
 import * as React from 'react';
 
 import { Component } from 'react';
@@ -8,10 +9,34 @@ import { FolderEntity, NoteEntity } from '@joplin/lib/services/database/types';
 import { AppState } from '../utils/types';
 import getEmptyFolderMessage from '@joplin/lib/components/shared/NoteList/getEmptyFolderMessage';
 import Folder from '@joplin/lib/models/Folder';
+import Note from '@joplin/lib/models/Note';
+import DragList, { DragListRenderItemInfo } from 'react-native-draglist';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { _ } = require('@joplin/lib/locale');
 import NoteItem from './NoteItem';
 import { themeStyle } from './global-style';
+
+interface DragListContainerProps<T> {
+	data: T[];
+	renderItem: (info: DragListRenderItemInfo<T>)=> React.ReactElement | null;
+	keyExtractor: (item: T)=> string;
+	onReordered: (fromIndex: number, toIndex: number)=> void;
+}
+
+function DragListContainer<T>(props: DragListContainerProps<T>) {
+	const insets = useSafeAreaInsets();
+	return (
+		<View style={{ flex: 1, marginBottom: insets.bottom }}>
+			<DragList
+				data={props.data}
+				renderItem={props.renderItem}
+				keyExtractor={props.keyExtractor}
+				onReordered={props.onReordered}
+			/>
+		</View>
+	);
+}
 
 interface NoteListProps {
 	themeId: number;
@@ -26,6 +51,44 @@ interface NoteListProps {
 	uncompletedTodosOnTop: boolean;
 	showCompletedTodos: boolean;
 }
+
+const isUncompletedTodo = (note: NoteEntity): boolean => {
+	return !!note?.is_todo && !note?.todo_completed;
+};
+
+const canMoveToIndex = (
+	notes: NoteEntity[],
+	fromIndex: number,
+	toIndex: number,
+	uncompletedTodosOnTop: boolean,
+): boolean => {
+	if (fromIndex === toIndex) return true;
+	if (toIndex < 0 || toIndex >= notes.length) return false;
+
+	if (!uncompletedTodosOnTop) return true;
+
+	const movingNote = notes[fromIndex];
+	const movingIsUncompleted = isUncompletedTodo(movingNote);
+
+	// Find the boundary index between uncompleted todos and other notes
+	let boundaryIndex = notes.length;
+	for (let i = 0; i < notes.length; i++) {
+		if (!isUncompletedTodo(notes[i])) {
+			boundaryIndex = i;
+			break;
+		}
+	}
+
+	// Uncompleted todos must stay in the uncompleted section (indices 0 to boundaryIndex-1)
+	// Other notes must stay in the other section (indices boundaryIndex to end)
+	if (movingIsUncompleted) {
+		// Moving an uncompleted todo - must stay before the boundary
+		return toIndex < boundaryIndex;
+	} else {
+		// Moving a completed/non-todo note - must stay at or after the boundary
+		return toIndex >= boundaryIndex;
+	}
+};
 
 class NoteListComponent extends Component<NoteListProps> {
 	private rootRef_: FlatList;
@@ -86,10 +149,83 @@ class NoteListComponent extends Component<NoteListProps> {
 		}
 	}
 
+	private handleReordered = (fromIndex: number, toIndex: number) => {
+		if (fromIndex === toIndex) {
+			// Force a re-render to reset the dragged item position
+			this.props.dispatch({ type: 'NOTE_SORT' });
+			return;
+		}
+
+		// Validate the move
+		if (!canMoveToIndex(this.props.items, fromIndex, toIndex, this.props.uncompletedTodosOnTop)) {
+			// Invalid move - force a re-render to snap item back to original position
+			this.props.dispatch({ type: 'NOTE_SORT' });
+			return;
+		}
+
+		const movedNote = this.props.items[fromIndex];
+		if (!movedNote?.id || !this.props.selectedFolderId) {
+			this.props.dispatch({ type: 'NOTE_SORT' });
+			return;
+		}
+
+		// Dispatch local reorder for immediate UI update
+		this.props.dispatch({
+			type: 'NOTE_REORDER_LOCAL',
+			noteId: movedNote.id,
+			fromIndex: fromIndex,
+			toIndex: toIndex,
+		});
+
+		// Calculate the target index for insertNotesAt
+		// When moving down, we need to add 1 because insertNotesAt inserts BEFORE the target
+		const targetIndex = toIndex > fromIndex ? toIndex + 1 : toIndex;
+
+		// Persist the change in the background (don't await)
+		void Note.insertNotesAt(
+			this.props.selectedFolderId,
+			[movedNote.id],
+			targetIndex,
+			this.props.uncompletedTodosOnTop,
+			this.props.showCompletedTodos,
+		);
+	};
+
+	private renderDraggableItem = (info: DragListRenderItemInfo<NoteEntity>) => {
+		const { item, onDragStart, onDragEnd, isActive } = info;
+		const index = this.props.items.findIndex(n => n.id === item.id);
+		return (
+			<NoteItem
+				note={item}
+				noteIndex={index}
+				totalNotes={this.props.items.length}
+				notes={this.props.items}
+				noteReorderModeEnabled={this.props.noteReorderModeEnabled}
+				uncompletedTodosOnTop={this.props.uncompletedTodosOnTop}
+				showCompletedTodos={this.props.showCompletedTodos}
+				folderId={this.props.selectedFolderId}
+				onDragStart={onDragStart}
+				onDragEnd={onDragEnd}
+				isActive={isActive}
+			/>
+		);
+	};
+
 	public render() {
 		// `enableEmptySections` is to fix this warning: https://github.com/FaridSafi/react-native-gifted-listview/issues/39
 
 		if (this.props.items.length) {
+			if (this.props.noteReorderModeEnabled) {
+				return (
+					<DragListContainer
+						data={this.props.items}
+						renderItem={this.renderDraggableItem}
+						keyExtractor={item => item.id}
+						onReordered={this.handleReordered}
+					/>
+				);
+			}
+
 			return <FlatList
 				ref={ref => { this.rootRef_ = ref; }}
 				data={this.props.items}

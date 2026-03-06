@@ -62,6 +62,7 @@
     "react": "19.1.4",
     "react-native": "0.81.6",
     "react-native-device-info": "14.1.1",
+    "react-native-draglist": "3.10.0",
     "react-native-dropdownalert": "5.2.0",
     "react-native-file-viewer": "2.1.5",
     "react-native-get-random-values": "1.11.0",

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { memo, useCallback, useMemo } from 'react';
 import { connect } from 'react-redux';
-import { Text, StyleSheet, TextStyle, ViewStyle, AccessibilityInfo, View, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TextStyle, ViewStyle, AccessibilityInfo, Pressable } from 'react-native';
 import Checkbox from './Checkbox';
 import Note from '@joplin/lib/models/Note';
 import time from '@joplin/lib/time';
@@ -14,13 +14,12 @@ import useOnLongPressProps from '../utils/hooks/useOnLongPressProps';
 import MultiTouchableOpacity from './buttons/MultiTouchableOpacity';
 import Icon from './Icon';
 
-interface Props {
+export interface NoteItemProps {
 	dispatch: Dispatch;
 	themeId: number;
 	note: NoteEntity;
 	noteSelectionEnabled: boolean;
 	selectedNoteIds: string[];
-	// Props for reorder mode
 	noteIndex?: number;
 	totalNotes?: number;
 	notes?: NoteEntity[];
@@ -28,7 +27,12 @@ interface Props {
 	uncompletedTodosOnTop?: boolean;
 	showCompletedTodos?: boolean;
 	folderId?: string;
+	onDragStart?: ()=> void;
+	onDragEnd?: ()=> void;
+	isActive?: boolean;
 }
+
+type Props = NoteItemProps;
 
 
 const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
@@ -37,11 +41,10 @@ const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
 
 		const listItem: ViewStyle = {
 			flexDirection: 'row',
-			// height: 40,
 			borderBottomWidth: 1,
 			borderBottomColor: theme.dividerColor,
 			alignItems: 'flex-start',
-			// backgroundColor: theme.backgroundColor,
+			backgroundColor: theme.backgroundColor,
 		};
 
 		const listItemPressable: ViewStyle = {
@@ -55,8 +58,8 @@ const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
 		};
 		const listItemPressableWithoutCheckbox: ViewStyle = {
 			...listItemPressable,
-			paddingLeft: theme.marginLeft,
-			paddingRight: noteReorderModeEnabled ? 0 : theme.marginRight,
+			paddingLeft: noteReorderModeEnabled ? 0 : theme.marginLeft,
+			paddingRight: noteReorderModeEnabled ? theme.marginRight : theme.marginRight,
 			paddingTop: theme.itemMarginTop,
 			paddingBottom: theme.itemMarginBottom,
 		};
@@ -76,28 +79,17 @@ const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
 		const selectionWrapperSelected = { ...selectionWrapper };
 		selectionWrapperSelected.backgroundColor = theme.selectedColor;
 
-		const reorderButtonsContainer: ViewStyle = {
-			flexDirection: 'row',
-			alignItems: 'center',
-			alignSelf: 'stretch',
-			backgroundColor: theme.backgroundColor,
-			paddingRight: theme.marginRight,
-		};
-
-		const reorderButton: ViewStyle = {
-			padding: 8,
+		const dragHandleContainer: ViewStyle = {
 			justifyContent: 'center',
 			alignItems: 'center',
+			alignSelf: 'stretch',
+			paddingHorizontal: 12,
 		};
 
-		const reorderButtonDisabled: ViewStyle = {
-			...reorderButton,
-			opacity: theme.disabledOpacity,
-		};
-
-		const reorderIcon: TextStyle = {
-			fontSize: 22,
+		const dragHandleIcon: TextStyle = {
+			fontSize: 20,
 			color: theme.color,
+			opacity: 0.6,
 		};
 
 		return StyleSheet.create({
@@ -113,16 +105,14 @@ const useStyles = (themeId: number, noteReorderModeEnabled: boolean) => {
 				paddingRight: 10,
 				paddingTop: theme.itemMarginTop,
 				paddingBottom: theme.itemMarginBottom,
-				paddingLeft: theme.marginLeft,
+				paddingLeft: noteReorderModeEnabled ? 0 : theme.marginLeft,
 			},
 			checkedOpacityStyle: {
 				opacity: 0.4,
 			},
 			uncheckedOpacityStyle: { },
-			reorderButtonsContainer,
-			reorderButton,
-			reorderButtonDisabled,
-			reorderIcon,
+			dragHandleContainer,
+			dragHandleIcon,
 		});
 	}, [themeId, noteReorderModeEnabled]);
 };
@@ -166,8 +156,11 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 
 	const onLongPress = useCallback(() => {
 		if (!props.note) return;
-		// Disable long press in reorder mode
-		if (noteReorderModeEnabled) return;
+
+		// In reorder mode, don't trigger selection on long press (drag is handled by the handle)
+		if (noteReorderModeEnabled) {
+			return;
+		}
 
 		if (!props.noteSelectionEnabled) {
 			AccessibilityInfo.announceForAccessibility(_('Entering selection mode'));
@@ -179,96 +172,9 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		});
 	}, [props.dispatch, props.note, props.noteSelectionEnabled, noteReorderModeEnabled]);
 
-	// Determine if this note is an uncompleted todo
+	// Determine if this note is a todo
 	const note = props.note ?? {};
 	const isTodo = !!Number(note.is_todo);
-	const isUncompletedTodo = isTodo && !Number(note.todo_completed);
-
-	// Calculate boundary conditions for reorder buttons
-	const canMoveUp = useMemo(() => {
-		if (!noteReorderModeEnabled) return false;
-		const noteIndex = props.noteIndex ?? 0;
-		if (noteIndex === 0) return false;
-
-		// If uncompletedTodosOnTop is enabled, check if moving would cross the boundary
-		if (props.uncompletedTodosOnTop && props.notes) {
-			const prevNote = props.notes[noteIndex - 1];
-			const prevIsUncompletedTodo = !!prevNote?.is_todo && !prevNote?.todo_completed;
-
-			// If current note is NOT an uncompleted todo and the previous note IS an uncompleted todo,
-			// then we cannot move up (would cross the boundary)
-			if (!isUncompletedTodo && prevIsUncompletedTodo) {
-				return false;
-			}
-		}
-
-		return true;
-	}, [noteReorderModeEnabled, props.noteIndex, props.uncompletedTodosOnTop, props.notes, isUncompletedTodo]);
-
-	const canMoveDown = useMemo(() => {
-		if (!noteReorderModeEnabled) return false;
-		const noteIndex = props.noteIndex ?? 0;
-		const totalNotes = props.totalNotes ?? 0;
-		if (noteIndex >= totalNotes - 1) return false;
-
-		// If uncompletedTodosOnTop is enabled, check if moving would cross the boundary
-		if (props.uncompletedTodosOnTop && props.notes) {
-			const nextNote = props.notes[noteIndex + 1];
-			const nextIsUncompletedTodo = !!nextNote?.is_todo && !nextNote?.todo_completed;
-
-			// If current note IS an uncompleted todo and the next note is NOT an uncompleted todo,
-			// then we cannot move down (would cross the boundary)
-			if (isUncompletedTodo && !nextIsUncompletedTodo) {
-				return false;
-			}
-		}
-
-		return true;
-	}, [noteReorderModeEnabled, props.noteIndex, props.totalNotes, props.uncompletedTodosOnTop, props.notes, isUncompletedTodo]);
-
-	const handleMoveUp = useCallback(() => {
-		if (!canMoveUp || !props.folderId || !props.note?.id) return;
-		const noteIndex = props.noteIndex ?? 0;
-		const targetIndex = noteIndex - 1;
-
-		props.dispatch({
-			type: 'NOTE_REORDER_LOCAL',
-			noteId: props.note.id,
-			fromIndex: noteIndex,
-			toIndex: targetIndex,
-		});
-
-		void Note.insertNotesAt(
-			props.folderId,
-			[props.note.id],
-			targetIndex,
-			props.uncompletedTodosOnTop ?? false,
-			props.showCompletedTodos ?? true,
-		);
-	}, [canMoveUp, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
-
-	const handleMoveDown = useCallback(() => {
-		if (!canMoveDown || !props.folderId || !props.note?.id) return;
-		const noteIndex = props.noteIndex ?? 0;
-		// When moving down, the target index for insertNotesAt needs to be +2
-		// because insertNotesAt inserts BEFORE the target index
-		const targetIndex = noteIndex + 2;
-
-		props.dispatch({
-			type: 'NOTE_REORDER_LOCAL',
-			noteId: props.note.id,
-			fromIndex: noteIndex,
-			toIndex: noteIndex + 1,
-		});
-
-		void Note.insertNotesAt(
-			props.folderId,
-			[props.note.id],
-			targetIndex,
-			props.uncompletedTodosOnTop ?? false,
-			props.showCompletedTodos ?? true,
-		);
-	}, [canMoveDown, props.folderId, props.note?.id, props.noteIndex, props.uncompletedTodosOnTop, props.showCompletedTodos, props.dispatch]);
 
 	const checkboxChecked = !!Number(note.todo_completed);
 
@@ -290,30 +196,18 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 		accessibilityLabel={_('to-do: %s', noteTitle)}
 	/> : null;
 
-	// Render reorder buttons when in reorder mode
-	const reorderButtons = noteReorderModeEnabled ? (
-		<View style={styles.reorderButtonsContainer}>
-			<TouchableOpacity
-				onPress={handleMoveUp}
-				disabled={!canMoveUp}
-				style={canMoveUp ? styles.reorderButton : styles.reorderButtonDisabled}
-				accessibilityLabel={_('Move up')}
-				accessibilityRole="button"
-				accessibilityState={{ disabled: !canMoveUp }}
-			>
-				<Icon name="ionicon chevron-up" style={styles.reorderIcon} accessibilityLabel={null} />
-			</TouchableOpacity>
-			<TouchableOpacity
-				onPress={handleMoveDown}
-				disabled={!canMoveDown}
-				style={canMoveDown ? styles.reorderButton : styles.reorderButtonDisabled}
-				accessibilityLabel={_('Move down')}
-				accessibilityRole="button"
-				accessibilityState={{ disabled: !canMoveDown }}
-			>
-				<Icon name="ionicon chevron-down" style={styles.reorderIcon} accessibilityLabel={null} />
-			</TouchableOpacity>
-		</View>
+	// Render drag handle when in reorder mode - long pressing it starts the drag
+	const dragHandle = noteReorderModeEnabled ? (
+		<Pressable
+			onLongPress={props.onDragStart}
+			onPressOut={props.onDragEnd}
+			delayLongPress={200}
+			style={styles.dragHandleContainer}
+			accessibilityLabel={_('Long press to drag and reorder')}
+			accessibilityRole="button"
+		>
+			<Icon name="ionicon reorder-two" style={styles.dragHandleIcon} accessibilityLabel={null} />
+		</Pressable>
 	) : null;
 
 	const pressableProps = {
@@ -327,15 +221,25 @@ const NoteItemComponent: React.FC<Props> = memo(props => {
 	// Text style with overflow handling for reorder mode
 	const textStyle = noteReorderModeEnabled ? [listItemTextStyle, { overflow: 'hidden' as const }] : listItemTextStyle;
 
+	// Combine drag handle with checkbox for the left side content
+	const leftContent = noteReorderModeEnabled ? (
+		<>
+			{dragHandle}
+			{todoCheckbox}
+		</>
+	) : todoCheckbox;
+
+	// Add active state styling when being dragged - same appearance but elevated
+	const activeStyle = props.isActive ? { elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 } : {};
+
 	return (
 		<MultiTouchableOpacity
 			{...pressableProps}
 			containerProps={{
-				style: [selectionWrapperStyle, opacityStyle, styles.listItem],
+				style: [selectionWrapperStyle, opacityStyle, styles.listItem, activeStyle],
 			}}
 			onPress={onPress}
-			beforePressable={todoCheckbox}
-			afterPressable={reorderButtons}
+			beforePressable={leftContent}
 		>
 			<Text style={textStyle} numberOfLines={noteReorderModeEnabled ? 1 : undefined}>{noteTitle}</Text>
 		</MultiTouchableOpacity>

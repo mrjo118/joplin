@@ -715,6 +715,10 @@ class AppComponent extends React.Component<AppComponentProps, AppComponentState>
 			sideMenuContent = <SideMenuContent/>;
 		}
 
+		if (this.props.noteReorderModeEnabled) {
+			disableSideMenuGestures = true;
+		}
+
 		const appNavInit = {
 			Notes: { screen: NotesScreen },
 			Note: { screen: NoteScreen },
