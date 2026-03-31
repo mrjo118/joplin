@@ -35,7 +35,7 @@ export interface SyncInfoValuePublicPrivateKeyPair {
 	updatedTime: number;
 }
 
-const compatAppMinVersionMapping = {
+const compatAppMinVersions = {
 	syncVersion: '3.0.0', // Must always match the higher of the 2 versions where they differ
 	desktopVersion: '3.0.0',
 	mobileVersion: '3.0.0',
@@ -50,7 +50,7 @@ const compatAppMinVersionMapping = {
 //
 // `appMinVersion_` should really just be a constant but for testing purposes it can be changed
 // using `setAppMinVersion()`
-let appMinVersion_ = compatAppMinVersionMapping.syncVersion;
+let appMinVersion_ = compatAppMinVersions.syncVersion;
 
 export const setAppMinVersion = (v: string) => {
 	appMinVersion_ = v;
@@ -559,13 +559,13 @@ export function masterKeyById(id: string) {
 }
 
 export const checkIfCanSync = (s: SyncInfo, appVersion: string) => {
-	if (compatAppMinVersionMapping.syncVersion === s.appMinVersion && appVersion < s.appMinVersion) {
-		if (compatAppMinVersionMapping.desktopVersion > compatAppMinVersionMapping.mobileVersion) {
-			if (!shim.isElectron() && appVersion >= compatAppMinVersionMapping.mobileVersion) {
+	if (compatAppMinVersions.syncVersion === s.appMinVersion && appVersion < s.appMinVersion) {
+		if (compatAppMinVersions.desktopVersion > compatAppMinVersions.mobileVersion) {
+			if (!shim.isElectron() && appVersion >= compatAppMinVersions.mobileVersion) {
 				return;
 			}
-		} else if (compatAppMinVersionMapping.desktopVersion < compatAppMinVersionMapping.mobileVersion) {
-			if (shim.isElectron() && appVersion >= compatAppMinVersionMapping.desktopVersion) {
+		} else if (compatAppMinVersions.desktopVersion < compatAppMinVersions.mobileVersion) {
+			if (shim.isElectron() && appVersion >= compatAppMinVersions.desktopVersion) {
 				return;
 			}
 		}
