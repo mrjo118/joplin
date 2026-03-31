@@ -10,6 +10,7 @@ import { compareVersions } from 'compare-versions';
 import { _ } from '../../locale';
 import JoplinError from '../../JoplinError';
 import { ErrorCode } from '../../errors';
+import shim from '../../shim';
 const fastDeepEqual = require('fast-deep-equal');
 
 const logger = Logger.create('syncInfoUtils');
@@ -34,6 +35,12 @@ export interface SyncInfoValuePublicPrivateKeyPair {
 	updatedTime: number;
 }
 
+const compatAppMinVersionMapping = {
+	syncVersion: '3.0.0', // Must always match the higher of the 2 versions where they differ
+	desktopVersion: '3.0.0',
+	mobileVersion: '3.0.0',
+};
+
 // This should be set to the client version whenever we require all the clients to be at the same
 // version in order to synchronise. One example is when adding support for the trash feature - if an
 // old client that doesn't know about this feature synchronises data with a new client, the notes
@@ -43,7 +50,7 @@ export interface SyncInfoValuePublicPrivateKeyPair {
 //
 // `appMinVersion_` should really just be a constant but for testing purposes it can be changed
 // using `setAppMinVersion()`
-let appMinVersion_ = '3.0.0';
+let appMinVersion_ = compatAppMinVersionMapping.syncVersion;
 
 export const setAppMinVersion = (v: string) => {
 	appMinVersion_ = v;
@@ -552,5 +559,17 @@ export function masterKeyById(id: string) {
 }
 
 export const checkIfCanSync = (s: SyncInfo, appVersion: string) => {
+	if (compatAppMinVersionMapping.syncVersion === s.appMinVersion && appVersion < s.appMinVersion) {
+		if (compatAppMinVersionMapping.desktopVersion > compatAppMinVersionMapping.mobileVersion) {
+			if (!shim.isElectron() && appVersion >= compatAppMinVersionMapping.mobileVersion) {
+				return;
+			}
+		} else if (compatAppMinVersionMapping.desktopVersion < compatAppMinVersionMapping.mobileVersion) {
+			if (shim.isElectron() && appVersion >= compatAppMinVersionMapping.desktopVersion) {
+				return;
+			}
+		}
+	}
+
 	if (compareVersions(appVersion, s.appMinVersion) < 0) throw new JoplinError(_('In order to synchronise, please upgrade your application to version %s+', s.appMinVersion), ErrorCode.MustUpgradeApp);
 };
