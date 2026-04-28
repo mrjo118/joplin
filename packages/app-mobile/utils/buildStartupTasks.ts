@@ -32,7 +32,7 @@ import Revision from '@joplin/lib/models/Revision';
 import RevisionService from '@joplin/lib/services/RevisionService';
 import JoplinDatabase from '@joplin/lib/JoplinDatabase';
 import Database from '@joplin/lib/database';
-import { initializeRegistry, reg } from '@joplin/lib/registry';
+import { initializeRegistry, reg, TaskData } from '@joplin/lib/registry';
 import FileApiDriverLocal from '@joplin/lib/file-api-driver-local';
 import ResourceFetcher from '@joplin/lib/services/ResourceFetcher';
 import SearchEngine from '@joplin/lib/services/search/SearchEngine';
@@ -463,6 +463,9 @@ const buildStartupTasks = (
 					},
 					appIsActive: () => {
 						return NativeAppState.currentState === 'active';
+					},
+					updateNotification: (taskData: TaskData) => {
+						return BackgroundService.updateNotification(taskData);
 					},
 				},
 			});

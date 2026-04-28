@@ -5,6 +5,7 @@ import SyncTargetRegistry from './SyncTargetRegistry';
 import { AnyAction, Dispatch } from 'redux';
 import Synchronizer from './Synchronizer';
 import uuid from './uuid';
+import time from './time';
 
 export interface BackgroundServiceOptions {
 	taskName: string;
@@ -35,6 +36,24 @@ export interface BackgroundService {
 	isRunning(): boolean;
 	requestPermissions(): Promise<void>;
 	appIsActive(): boolean;
+	updateNotification(taskData: TaskData): Promise<void>;
+}
+
+export interface TaskData {
+	taskTitle?: string;
+	taskDesc?: string;
+	taskIcon?: {
+		name: string;
+		type: string;
+		package?: string;
+	};
+	color?: string;
+	linkingURI?: string;
+	progressBar?: {
+		max: number;
+		value: number;
+		indeterminate?: boolean;
+	};
 }
 
 class Registry {
@@ -300,15 +319,21 @@ class Registry {
 
 		try {
 			return await service.start(async () => {
-				let response = null;
-				this.logger().debug(`registry.startSync [${uid}]: Background service started`);
-				response = await sync.start(options);
-				this.logger().debug(`registry.startSync [${uid}]: Background service ended`);
-				return response;
+				this.logger().info(`registry.startSync [${uid}]: Background service started`);
+				void sync.start(options);
+				await time.msleep(100);
+				let runningTime = 0;
+				while (sync.state() !== 'idle') {
+					await time.sleep(5);
+					runningTime = runningTime + 5;
+					void service.updateNotification({ taskDesc: `Sync running for ${runningTime} seconds` });
+				}
+				this.logger().info(`registry.startSync [${uid}]: Background service ended`);
+				return null;
 			}, {
 				taskName: 'Sync',
 				taskTitle: 'Syncing data',
-				taskDesc: 'Sync in progress...',
+				taskDesc: 'Sync running for 0 seconds',
 				taskIcon: {
 					name: 'ic_stat_sync',
 					type: 'drawable',
