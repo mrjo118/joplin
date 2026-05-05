@@ -117,14 +117,6 @@ const createEditor = (
 		}
 	};
 
-	const notifyViewportRefresh = (viewUpdate: ViewUpdate) => {
-		if (viewUpdate.viewportChanged || viewUpdate.docChanged) return;
-
-		// Force a re-measure cycle on scroll-like updates
-		if (viewUpdate.transactions.some(tr => tr.isUserEvent('scroll'))) {
-			viewUpdate.view.requestMeasure();
-		}
-	};
 
 	const globalSpellcheckEnabled = () => {
 		return editor.contentDOM.spellcheck;
@@ -335,7 +327,6 @@ const createEditor = (
 					notifyDocChanged(viewUpdate);
 					notifySelectionChange(viewUpdate);
 					notifySelectionFormattingChange(viewUpdate);
-					notifyViewportRefresh(viewUpdate);
 				}),
 
 				handleLinkEditRequests(() => {
