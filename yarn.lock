@@ -8016,15 +8016,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@codemirror/view@npm:6.38.8":
-  version: 6.38.8
-  resolution: "@codemirror/view@npm:6.38.8"
+"@codemirror/view@npm:6.36.8":
+  version: 6.36.8
+  resolution: "@codemirror/view@npm:6.36.8"
   dependencies:
     "@codemirror/state": "npm:^6.5.0"
-    crelt: "npm:^1.0.6"
     style-mod: "npm:^4.1.0"
     w3c-keyname: "npm:^2.2.4"
-  checksum: 10/81b1508015a378e4719d0239254173f0c5cd340c2abf96eb488fe5fb474bdb37ec1f010b9890ced774accd7aeb9443e7337cb6a89544b954273e5ddabece7cea
+  checksum: 10/cb2cbfb8a41ee1d6cfb17c2ea91b9763e692f85d523b55276cc46ab7fda3f6ba0bcc03e2194ad6cf6b413ec34d309ab408300c19b62d5d6d6f9e2071fb99d489
   languageName: node
   linkType: hard
 
@@ -12546,7 +12545,7 @@ __metadata:
     "@codemirror/lint": "npm:6.9.5"
     "@codemirror/search": "npm:6.6.0"
     "@codemirror/state": "npm:6.6.0"
-    "@codemirror/view": "npm:6.38.8"
+    "@codemirror/view": "npm:6.36.8"
     "@joplin/fork-uslug": "npm:^2.0.0"
     "@joplin/lib": "npm:~3.6"
     "@joplin/utils": "npm:~3.6"
@@ -26277,7 +26276,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"crelt@npm:^1.0.0, crelt@npm:^1.0.6":
+"crelt@npm:^1.0.0":
   version: 1.0.6
   resolution: "crelt@npm:1.0.6"
   checksum: 10/5ed326ca6bd243b1dba6b943f665b21c2c04be03271824bc48f20dba324b0f8233e221f8c67312526d24af2b1243c023dc05a41bd8bd05d1a479fd2c72fb39c3
