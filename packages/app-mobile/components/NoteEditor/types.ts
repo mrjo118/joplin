@@ -3,7 +3,7 @@
 import { EditorControl as EditorBodyControl, EditorSettings as EditorBodySettings, SearchState } from '@joplin/editor/types';
 import { RefObject } from 'react';
 import { WebViewControl } from '../ExtendedWebView/types';
-import { SelectionRange } from '../../contentScripts/markdownEditorBundle/types';
+import { EditorProcessApi, SelectionRange } from '../../contentScripts/markdownEditorBundle/types';
 import { PluginStates } from '@joplin/lib/services/plugins/reducer';
 import { EditorEvent } from '@joplin/editor/events';
 import { ResourceInfos } from '@joplin/renderer/types';
@@ -57,6 +57,7 @@ export interface EditorProps {
 	noteResources: ResourceInfos;
 	editorRef: RefObject<EditorBodyControl>;
 	webviewRef: RefObject<WebViewControl>;
+	markdownEditorApiRef?: RefObject<EditorProcessApi|null>;
 	themeId: number;
 	noteId: string;
 	noteHash: string;

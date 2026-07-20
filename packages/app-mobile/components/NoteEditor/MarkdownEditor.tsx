@@ -132,6 +132,9 @@ const MarkdownEditor: React.FC<EditorProps> = props => {
 	});
 
 	props.editorRef.current = editorWebViewSetup.api.mainEditor;
+	if (props.markdownEditorApiRef) {
+		props.markdownEditorApiRef.current = editorWebViewSetup.api;
+	}
 
 	const injectedJavaScript = `
 		window.onerror = (message, source, lineno) => {

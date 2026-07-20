@@ -77,10 +77,6 @@ const useWebViewSetup = ({
 				// if specified, should take precedence.
 				${setInitialSelectionJs}
 				${setInitialSearchJs}
-
-				window.onresize = () => {
-					cm.execCommand('scrollSelectionIntoView');
-				};
 			} else if (parentClassName) {
 				console.log('No parent element found with class name ', parentClassName);
 			}

@@ -24,6 +24,7 @@ export interface EditorProcessApi {
 	mainEditor: EditorControl;
 	updateSettings: (settings: EditorSettings)=> void;
 	updatePlugins: (contentScripts: ContentScriptData[])=> void;
+	scrollSelectionIntoView(): void;
 }
 
 export interface SelectionRange {

@@ -3,7 +3,7 @@ import { focus } from '@joplin/lib/utils/focusHandler';
 import WebViewToRNMessenger from '../../utils/ipc/WebViewToRNMessenger';
 import { EditorProcessApi, EditorProps, EditorWithParentProps, ExportedWebViewGlobals, MainProcessApi } from './types';
 import readFileToBase64 from '../utils/readFileToBase64';
-import { EditorControl } from '@joplin/editor/types';
+import { EditorCommandType, EditorControl } from '@joplin/editor/types';
 import { EditorEventType } from '@joplin/editor/events';
 import InMemoryCache from '@joplin/renderer/InMemoryCache';
 
@@ -26,6 +26,11 @@ const messenger = new WebViewToRNMessenger<EditorProcessApi, MainProcessApi>('ma
 	updateSettings(settings) {
 		for (const editor of allEditors) {
 			editor.updateSettings(settings);
+		}
+	},
+	scrollSelectionIntoView() {
+		if (mainEditor) {
+			void mainEditor.execCommand(EditorCommandType.ScrollSelectionIntoView);
 		}
 	},
 });

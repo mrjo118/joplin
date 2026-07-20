@@ -19,7 +19,7 @@ import SelectionFormatting, { defaultSelectionFormatting } from '@joplin/editor/
 import { PluginStates } from '@joplin/lib/services/plugins/reducer';
 import useEditorCommandHandler from './hooks/useEditorCommandHandler';
 import EditorToolbar from '../EditorToolbar/EditorToolbar';
-import { SelectionRange } from '../../contentScripts/markdownEditorBundle/types';
+import { EditorProcessApi, SelectionRange } from '../../contentScripts/markdownEditorBundle/types';
 import MarkdownEditor from './MarkdownEditor';
 import RichTextEditor from './RichTextEditor';
 import { ResourceInfos } from '@joplin/renderer/types';
@@ -326,12 +326,24 @@ const useHasSpaceForToolbar = () => {
 
 function NoteEditor(props: Props) {
 	const webviewRef = useRef<WebViewControl>(null);
+	const markdownEditorApiRef = useRef<EditorProcessApi|null>(null);
 
 	const editorSettings = useEditorSettings(props);
 
 	const [selectionState, setSelectionState] = useState<SelectionFormatting>(defaultSelectionFormatting);
 	const [linkDialogVisible, setLinkDialogVisible] = useState(false);
 	const [searchState, setSearchState] = useState(defaultSearchState);
+	const prevSearchDialogVisibleRef = useRef(false);
+
+	useEffect(() => {
+		const wasVisible = prevSearchDialogVisibleRef.current;
+		prevSearchDialogVisibleRef.current = searchState.dialogVisible;
+
+		if (props.mode !== EditorType.Markdown) return;
+		if (wasVisible || !searchState.dialogVisible) return;
+
+		void markdownEditorApiRef.current?.scrollSelectionIntoView();
+	}, [searchState.dialogVisible, props.mode]);
 
 	const editorControlRef = useRef<EditorControl|null>(null);
 	const lastSearchVisibleRef = useRef<boolean|undefined>(undefined);
@@ -481,6 +493,7 @@ function NoteEditor(props: Props) {
 					key={props.refreshKey}
 					editorRef={editorRef}
 					webviewRef={webviewRef}
+					markdownEditorApiRef={markdownEditorApiRef}
 					themeId={props.themeId}
 					noteId={props.noteId}
 					noteHash={props.noteHash}
