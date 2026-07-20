@@ -38,6 +38,7 @@ import { AppState } from '../../utils/types';
 import { connect } from 'react-redux';
 import { Second } from '@joplin/utils/time';
 import useDebounced from '../../utils/hooks/useDebounced';
+import useKeyboardState from '../../utils/hooks/useKeyboardState';
 
 const logger = Logger.create('NoteEditor');
 
@@ -334,6 +335,8 @@ function NoteEditor(props: Props) {
 	const [linkDialogVisible, setLinkDialogVisible] = useState(false);
 	const [searchState, setSearchState] = useState(defaultSearchState);
 	const prevSearchDialogVisibleRef = useRef(false);
+	const { dockedKeyboardHeight } = useKeyboardState();
+	const prevDockedKeyboardHeightRef = useRef(0);
 
 	useEffect(() => {
 		const wasVisible = prevSearchDialogVisibleRef.current;
@@ -344,6 +347,18 @@ function NoteEditor(props: Props) {
 
 		void markdownEditorApiRef.current?.scrollSelectionIntoView();
 	}, [searchState.dialogVisible, props.mode]);
+
+	useEffect(() => {
+		const prevHeight = prevDockedKeyboardHeightRef.current;
+		prevDockedKeyboardHeightRef.current = dockedKeyboardHeight;
+
+		if (props.mode !== EditorType.Markdown) return;
+
+		// Only scroll on docked keyboard open, not on dismiss
+		if (prevHeight > 0 || dockedKeyboardHeight === 0) return;
+
+		void markdownEditorApiRef.current?.scrollSelectionIntoView();
+	}, [dockedKeyboardHeight, props.mode]);
 
 	const editorControlRef = useRef<EditorControl|null>(null);
 	const lastSearchVisibleRef = useRef<boolean|undefined>(undefined);
