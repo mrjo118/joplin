@@ -12,6 +12,7 @@ import { PluginStates } from '@joplin/lib/services/plugins/reducer';
 import useCodeMirrorPlugins from './utils/useCodeMirrorPlugins';
 import Resource from '@joplin/lib/models/Resource';
 import { parseResourceUrl } from '@joplin/lib/urlUtils';
+import useKeyboardState from '../../utils/hooks/useKeyboardState';
 const { isImageMimeType } = require('@joplin/lib/resourceUtils');
 
 const logger = Logger.create('markdownEditor');
@@ -42,6 +43,7 @@ type Result = SetUpResult<EditorProcessApi> & { hasPlugins: boolean };
 const useWebViewSetup = ({
 	editorOptions, pluginStates, initialSelection, noteHash, globalSearch, webviewRef, onEditorEvent, onAttachFile,
 }: Props): Result => {
+	const { dockedKeyboardHeight } = useKeyboardState();
 	const setInitialSelectionJs = initialSelection ? `
 		cm.select(${initialSelection.start}, ${initialSelection.end});
 		cm.execCommand('scrollSelectionIntoView');
@@ -77,10 +79,6 @@ const useWebViewSetup = ({
 				// if specified, should take precedence.
 				${setInitialSelectionJs}
 				${setInitialSearchJs}
-
-				window.onresize = () => {
-					cm.execCommand('scrollSelectionIntoView');
-				};
 			} else if (parentClassName) {
 				console.log('No parent element found with class name ', parentClassName);
 			}
@@ -186,6 +184,22 @@ const useWebViewSetup = ({
 	useEffect(() => {
 		api.updatePlugins(codeMirrorPlugins);
 	}, [codeMirrorPlugins, api]);
+
+	const previousKeyboardHeight = useRef(0);
+	useEffect(() => {
+		if (
+			previousKeyboardHeight.current === 0 &&
+			dockedKeyboardHeight > 0
+		) {
+			webviewRef.current?.injectJS(`
+				if (window.cm) {
+					cm.execCommand('scrollSelectionIntoView');
+				}
+			`);
+		}
+
+		previousKeyboardHeight.current = dockedKeyboardHeight;
+	}, [dockedKeyboardHeight, webviewRef]);
 
 	return useMemo(() => ({
 		pageSetup: {
