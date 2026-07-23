@@ -357,7 +357,9 @@ function NoteEditor(props: Props) {
 		// Only scroll on docked keyboard open, not on dismiss
 		if (prevHeight > 0 || dockedKeyboardHeight === 0) return;
 
-		void markdownEditorApiRef.current?.scrollSelectionIntoView();
+		setTimeout(() => {
+			void markdownEditorApiRef.current?.scrollSelectionIntoView();
+		}, 100);
 	}, [dockedKeyboardHeight, props.mode]);
 
 	const editorControlRef = useRef<EditorControl|null>(null);
