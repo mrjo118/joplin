@@ -31,6 +31,14 @@ function removeAdjacentFolderDuplicates(items: Route[]) {
 	return items.filter((item, idx) => (idx >= 1) ? !(item.routeName === 'Notes' && items[idx - 1].routeName === 'Notes' && items[idx - 1].folderId === item.folderId) : true);
 }
 
+function removeAdjacentTagDuplicates(items: Route[]) {
+	return items.filter((item, idx) => (idx >= 1) ? !(item.routeName === 'Notes' && items[idx - 1].routeName === 'Notes' && items[idx - 1].tagId === item.tagId) : true);
+}
+
+function removeAdjacentTagScreenDuplicates(items: Route[]) {
+	return items.filter((item, idx) => (idx >= 1) ? !(item.routeName === 'Tags' && items[idx - 1].routeName === 'Tags') : true);
+}
+
 function removeLatestFolderIfSelected(items: Route[], route: Route) {
 	if (items.length && route.routeName === 'Notes' && items[items.length - 1].folderId === route.folderId) {
 		items.splice(items.length - 1, 1);
@@ -135,6 +143,17 @@ const appReducer = (state = appDefaultState, action: any) => {
 				newState.historyCanGoBack = !!navHistory.length;
 
 				logger.debug('Navigated to route:', newState.route?.routeName, 'with notesParentType:', newState.notesParentType);
+			}
+			break;
+
+		case 'TAG_DELETE':
+		case 'TAG_REMOVE_NAV_HISTORY':
+
+			{
+				let newNavHistoryForTag = navHistory.filter(route => !(route.routeName === 'Notes' && route.tagId === action.id));
+				newNavHistoryForTag = removeAdjacentTagDuplicates(newNavHistoryForTag);
+				newNavHistoryForTag = removeAdjacentTagScreenDuplicates(newNavHistoryForTag); // TODO needs to consider if current screen is tag screen too
+				navHistory.splice(0, navHistory.length, ...newNavHistoryForTag);
 			}
 			break;
 

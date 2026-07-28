@@ -8,6 +8,7 @@ export interface Route {
 	routeName: string;
 	folderId?: string;
 	noteId?: string;
+	tagId?: string;
 	isDeleted?: boolean;
 }
 

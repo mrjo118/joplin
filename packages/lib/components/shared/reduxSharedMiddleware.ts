@@ -107,10 +107,18 @@ export default async (store: Store<State>, _next: Dispatch, action: any, dispatc
 	}
 
 	if (refreshTags) {
+		const newTags = await Tag.allWithNotes();
 		store.dispatch({
 			type: 'TAG_UPDATE_ALL',
-			items: await Tag.allWithNotes(),
+			items: newTags,
 		});
+
+		if (action.type === 'NOTE_TAG_REMOVE' && action.item?.id && newTags && !newTags.some(o => o.id === action.item.id)) {
+			store.dispatch({
+				type: 'TAG_REMOVE_NAV_HISTORY',
+				id: action.item.id,
+			});
+		}
 	}
 
 	if (sortNoteList) {
