@@ -98,8 +98,6 @@ function useHtml(): string {
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 				<title>${_('Note editor')}</title>
 				<style>
-					/* For better scrolling on iOS (working scrollbar) we use external, rather than internal,
-						scrolling. */
 					.cm-scroller {
 						overflow: auto;
 					}
