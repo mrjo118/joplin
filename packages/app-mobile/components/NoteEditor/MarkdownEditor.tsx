@@ -101,7 +101,7 @@ function useHtml(): string {
 					/* For better scrolling on iOS (working scrollbar) we use external, rather than internal,
 						scrolling. */
 					.cm-scroller {
-						overflow: auto;
+						overflow: none;
 					}
 				</style>
 			</head>
