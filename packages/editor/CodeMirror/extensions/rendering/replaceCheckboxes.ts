@@ -41,6 +41,10 @@ class CheckboxWidget extends WidgetType {
 			toggleCheckboxAt(view.posAtDOM(container))(view);
 		};
 
+		checkbox.onclick = (event) => {
+			event.stopPropagation();
+		};
+
 		this.applyContainerClasses(container);
 		return container;
 	}
@@ -93,18 +97,6 @@ const replaceCheckboxes = [
 		mousedown: (event) => {
 			const target = event.target as Element;
 			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
-				// Prevent scrollSelectionIntoView firing in global onclick handler
-				event.stopPropagation();
-				// Let the checkbox handle the event
-				return true;
-			}
-			return false;
-		},
-		click: (event) => {
-			const target = event.target as Element;
-			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
-				// Prevent scrollSelectionIntoView firing in global onclick handler
-				event.stopPropagation();
 				// Let the checkbox handle the event
 				return true;
 			}
