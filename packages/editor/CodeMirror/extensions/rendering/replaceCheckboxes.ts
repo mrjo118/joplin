@@ -41,6 +41,7 @@ class CheckboxWidget extends WidgetType {
 			toggleCheckboxAt(view.posAtDOM(container))(view);
 		};
 
+		// Prevent global onclick handler triggering an unwanted scroll
 		checkbox.onclick = (event) => {
 			event.stopPropagation();
 		};
