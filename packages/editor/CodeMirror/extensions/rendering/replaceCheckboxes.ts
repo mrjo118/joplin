@@ -90,7 +90,7 @@ const replaceCheckboxes = [
 		},
 	}),
 	EditorView.domEventHandlers({
-		mousedown: (event) => {
+		click: (event) => {
 			const target = event.target as Element;
 			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
 				// Prevent scrollSelectionIntoView firing in global onclick handler
