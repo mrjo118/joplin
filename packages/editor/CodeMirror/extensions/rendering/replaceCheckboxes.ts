@@ -93,6 +93,8 @@ const replaceCheckboxes = [
 		mousedown: (event) => {
 			const target = event.target as Element;
 			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
+				// Prevent scrollSelectionIntoView firing in global onclick handler
+				event.stopPropagation();
 				// Let the checkbox handle the event
 				return true;
 			}
