@@ -90,6 +90,14 @@ const replaceCheckboxes = [
 		},
 	}),
 	EditorView.domEventHandlers({
+		mousedown: (event) => {
+			const target = event.target as Element;
+			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
+				// Let the checkbox handle the event
+				return true;
+			}
+			return false;
+		},
 		click: (event) => {
 			const target = event.target as Element;
 			if (target.nodeName === 'INPUT' && target.parentElement?.classList?.contains(checkboxClassName)) {
