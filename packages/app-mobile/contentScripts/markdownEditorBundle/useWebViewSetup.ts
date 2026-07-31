@@ -43,10 +43,8 @@ const useWebViewSetup = ({
 	editorOptions, pluginStates, initialSelection, noteHash, globalSearch, webviewRef, onEditorEvent, onAttachFile,
 }: Props): Result => {
 	const setInitialSelectionJs = initialSelection ? `
-		setTimeout(() => {
-			cm.select(${initialSelection.start}, ${initialSelection.end});
-			cm.execCommand('scrollSelectionIntoView');
-		}, 100);
+		cm.select(${initialSelection.start}, ${initialSelection.end});
+		cm.execCommand('scrollSelectionIntoView');
 	` : '';
 	const jumpToHashJs = noteHash ? `
 		cm.jumpToHash(${JSON.stringify(noteHash)});
@@ -73,12 +71,14 @@ const useWebViewSetup = ({
 			if (foundParent) {
 				window.cm = markdownEditorBundle.createMainEditor(${JSON.stringify(editorOptions)});
 
-				${jumpToHashJs}
+				setTimeout(() => {
+					${jumpToHashJs}
 
-				// Set the initial selection after jumping to the header -- the initial selection,
-				// if specified, should take precedence.
-				${setInitialSelectionJs}
-				${setInitialSearchJs}
+					// Set the initial selection after jumping to the header -- the initial selection,
+					// if specified, should take precedence.
+					${setInitialSelectionJs}
+					${setInitialSearchJs}
+				}, 100);
 			} else if (parentClassName) {
 				console.log('No parent element found with class name ', parentClassName);
 			}
