@@ -10,6 +10,8 @@ const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin'
 const appDirectory = path.resolve(__dirname, '../');
 const babelConfig = require('../babel.config');
 
+const reanimatedDndPath = path.resolve(appDirectory, 'node_modules/react-native-reanimated-dnd');
+
 const buildSharedConfig = (hotReload: boolean): webpack.Configuration => {
 	const babelLoaderConfiguration = {
 		test: /\.(tsx|jsx|ts|js|mjs)$/,
@@ -22,6 +24,7 @@ const buildSharedConfig = (hotReload: boolean): webpack.Configuration => {
 			/.*node_modules[/\\]@sqlite\.org[/\\].*/,
 			/.*node_modules[/\\]markdown-it-anchor[/\\].*/,
 			/.*node_modules[/\\]markdown-it-toc-done-right[/\\].*/,
+			/.*node_modules[/\\]react-native-reanimated-dnd[/\\].*/,
 		],
 
 		use: {
@@ -36,6 +39,14 @@ const buildSharedConfig = (hotReload: boolean): webpack.Configuration => {
 					...(hotReload ? ['react-refresh/babel'] : []),
 				],
 			},
+		},
+	};
+
+	const reanimatedDndEsmCompatibilityRule = {
+		test: /\.js$/,
+		include: [reanimatedDndPath],
+		resolve: {
+			fullySpecified: false,
 		},
 	};
 
@@ -54,6 +65,7 @@ const buildSharedConfig = (hotReload: boolean): webpack.Configuration => {
 		},
 		module: {
 			rules: [
+				reanimatedDndEsmCompatibilityRule,
 				babelLoaderConfiguration,
 				resourceLoaderConfiguration,
 			],
