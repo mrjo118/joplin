@@ -22,6 +22,11 @@ import { MenuChoice } from '../../DialogManager/types';
 import NewNoteButton from './NewNoteButton';
 import PerFolderSortOrderService from '@joplin/lib/services/sortOrder/PerFolderSortOrderService';
 import { ALL_NOTES_FILTER_ID } from '@joplin/lib/reserved-ids';
+import { itemIsReadOnlySync, ItemSlice } from '@joplin/lib/models/utils/readOnly';
+import { ModelType } from '@joplin/lib/BaseModel';
+import ItemChange from '@joplin/lib/models/ItemChange';
+import { State as ShareServiceState } from '@joplin/lib/services/share/reducer';
+import ReorderNotesList from './ReorderNotesList';
 
 interface Props {
 	dispatch: Dispatch;
@@ -32,10 +37,14 @@ interface Props {
 	folders: FolderEntity[];
 	tags: TagEntity[];
 	notesSource: string;
+	notes: NoteEntity[];
 	notesOrder: PreviewsOrder[];
 	uncompletedTodosOnTop: boolean;
 	showCompletedTodos: boolean;
 	noteSelectionEnabled: boolean;
+	noteReorderEnabled: boolean;
+	shareService: ShareServiceState;
+	syncUserId: string;
 
 	selectedNoteIds: string[];
 	activeFolderId: string;
@@ -116,11 +125,28 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			});
 		}
 
+		if (this.canShowReorderNotesMenuItem()) {
+			buttons.push({
+				text: `[ ${_('Re-arrange notes')} ]`,
+				id: { name: 'noteReorderEnabled', value: true },
+			});
+		}
+
 		const r = await this.props.dialogManager.showMenu(Setting.settingMetadata('notes.sortOrder.field').label(), buttons);
 		if (!r) return;
 
 		if (r.name === 'perFolderSortOrder') {
 			PerFolderSortOrderService.set(currentFolderId, r.value as boolean);
+		} else if (r.name === 'noteReorderEnabled') {
+			if (this.props.noteSelectionEnabled) {
+				this.props.dispatch({ type: 'NOTE_SELECTION_END' });
+			}
+
+			this.props.dispatch({
+				type: 'NAV_GO',
+				routeName: 'Notes',
+				noteReorderEnabled: true,
+			});
 		} else if (r.name === 'notes.sortOrder.field' || r.name === 'notes.sortOrder.reverse') {
 			Setting.setValue(r.name, r.value);
 			// Update the appropriate sort order storage based on whether per-folder sort is enabled
@@ -153,6 +179,24 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 			return this.props.selectedSmartFilterId;
 		}
 		return '';
+	}
+
+	private canShowReorderNotesMenuItem() {
+		if (Setting.value('notes.sortOrder.field') !== 'order') return false;
+		if (this.props.notesParentType !== 'Folder') return false;
+		if (!this.props.selectedFolderId || this.props.selectedFolderId === Folder.conflictFolderId()) return false;
+
+		const selectedFolder = Folder.byId(this.props.folders, this.props.selectedFolderId);
+		if (!selectedFolder) return false;
+		if (itemIsInTrash(selectedFolder)) return false;
+
+		return !itemIsReadOnlySync(
+			ModelType.Folder,
+			ItemChange.SOURCE_UNSPECIFIED,
+			selectedFolder as ItemSlice,
+			this.props.syncUserId,
+			this.props.shareService,
+		);
 	}
 
 	public styles() {
@@ -275,6 +319,7 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 	public render() {
 		const parent = this.parentItem();
 		const theme = themeStyle(this.props.themeId);
+		const reorderMode = !!this.props.noteReorderEnabled && this.canShowReorderNotesMenuItem();
 
 		const rootStyle = this.props.visible ? theme.rootStyle : theme.hiddenRootStyle;
 
@@ -315,16 +360,35 @@ class NotesScreenComponent extends BaseScreenComponent<ComponentProps, State> {
 
 				inert={accessibilityHidden}
 			>
-				<ScreenHeader
-					title={iconString + title}
-					showBackButton={false}
-					sortButton_press={this.sortButton_press}
-					folderPickerOptions={this.folderPickerOptions()}
-					showSearchButton={true}
-					showSideMenuButton={true}
-				/>
-				<NoteList />
-				{actionButtonComp}
+				{reorderMode ? <>
+					<ScreenHeader
+						title={_('Re-arrange notes')}
+						showBackButton={true}
+						showSideMenuButton={false}
+						showSearchButton={false}
+						showContextMenuButton={false}
+					/>
+					<ReorderNotesList
+						themeId={this.props.themeId}
+						notes={this.props.notes}
+						selectedFolderId={this.props.selectedFolderId}
+						uncompletedTodosOnTop={this.props.uncompletedTodosOnTop}
+						showCompletedTodos={this.props.showCompletedTodos}
+						shareService={this.props.shareService}
+						syncUserId={this.props.syncUserId}
+					/>
+				</> : <>
+					<ScreenHeader
+						title={iconString + title}
+						showBackButton={false}
+						sortButton_press={this.sortButton_press}
+						folderPickerOptions={this.folderPickerOptions()}
+						showSearchButton={true}
+						showSideMenuButton={true}
+					/>
+					<NoteList />
+					{actionButtonComp}
+				</>}
 			</AccessibleView>
 		);
 	}
@@ -347,6 +411,9 @@ const NotesScreen = connect((state: AppState) => {
 		notesParentType: state.notesParentType,
 		notes: state.notes,
 		notesSource: state.notesSource,
+		noteReorderEnabled: !!state.route.noteReorderEnabled,
+		shareService: state.shareService,
+		syncUserId: state.settings['sync.userId'],
 		uncompletedTodosOnTop: state.settings.uncompletedTodosOnTop,
 		showCompletedTodos: state.settings.showCompletedTodos,
 		themeId: state.settings.theme,

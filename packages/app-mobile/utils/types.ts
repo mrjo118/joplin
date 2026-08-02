@@ -9,6 +9,7 @@ export interface Route {
 	folderId?: string;
 	noteId?: string;
 	isDeleted?: boolean;
+	noteReorderEnabled?: boolean;
 }
 
 export interface AppState extends State {

@@ -116,6 +116,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import appReducer from './utils/appReducer';
 import SyncWizard from './components/SyncWizard/SyncWizard';
 import Synchronizer from '@joplin/lib/Synchronizer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const logger = Logger.create('root');
 const perfLogger = PerformanceLogger.create();
@@ -908,9 +909,11 @@ const App = connect(mapStateToProps)(AppComponent);
 export default class Root extends React.Component {
 	public render() {
 		return (
-			<Provider store={store}>
-				<App/>
-			</Provider>
+			<GestureHandlerRootView style={{ flex: 1 }}>
+				<Provider store={store}>
+					<App/>
+				</Provider>
+			</GestureHandlerRootView>
 		);
 	}
 }
