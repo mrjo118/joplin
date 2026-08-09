@@ -11,13 +11,14 @@ import Note from '@joplin/lib/models/Note';
 import ResourceFetcher from '@joplin/lib/services/ResourceFetcher';
 import { focus } from '@joplin/lib/utils/focusHandler';
 import Logger from '@joplin/utils/Logger';
-import eventManager, { EventName } from '@joplin/lib/eventManager';
+import eventManager, { EventName, ItemChangeEvent } from '@joplin/lib/eventManager';
 import DecryptionWorker from '@joplin/lib/services/DecryptionWorker';
 import useQueuedAsyncEffect from '@joplin/lib/hooks/useQueuedAsyncEffect';
 import { NoteEntity } from '@joplin/lib/services/database/types';
 import NoteLockNote from '@joplin/lib/services/noteLock/NoteLockNote';
 import NoteLockSession from '@joplin/lib/services/noteLock/NoteLockSession';
 import isNoteLockEnabled from '@joplin/lib/services/noteLock/isNoteLockEnabled';
+import ItemChange from '@joplin/lib/models/ItemChange';
 
 const logger = Logger.create('useFormNote');
 
@@ -92,7 +93,7 @@ const loadNoteForForm = async (noteId: string): Promise<{ note: NoteEntity|null;
 };
 
 type InitNoteStateCallback = (note: NoteEntity, isNew: boolean)=> Promise<FormNote>;
-const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: string, noteId: string, initNoteState: InitNoteStateCallback, clearFormNote: ()=> void, builtInEditorVisible: boolean, noteLockSessionUnlocked: boolean, setDecryptFailed: (value: boolean)=> void, setLoadBlocked: (value: boolean)=> void) => {
+const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: string, noteId: string, initNoteState: InitNoteStateCallback, clearFormNote: (isReloading?: boolean)=> void, builtInEditorVisible: boolean, noteLockSessionUnlocked: boolean, setDecryptFailed: (value: boolean)=> void, setLoadBlocked: (value: boolean)=> void) => {
 	// Increasing the value of this counter cancels any ongoing note refreshes and starts
 	// a new refresh.
 	const [formNoteRefreshScheduled, setFormNoteRefreshScheduled] = useState<number>(0);
@@ -174,15 +175,22 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 
 		let cancelled = false;
 
-		type ChangeEventSlice = { itemId: string; changeId: string };
-		const listener = ({ itemId, changeId }: ChangeEventSlice) => {
+		const listener = ({ itemId, changeId, changeSource }: ItemChangeEvent) => {
 			// If this change came from the current editor, it should already be
 			// handled by calls to `setFormNote`. If events from the current editor
 			// aren't ignored, most user-activated note changes (e.g. a keypress)
 			// cause the note to refresh. (Undesired refreshes can cause the cursor to jump).
 			const isExternalChange = !(changeId ?? 'unknown').endsWith(editorId);
 			if (itemId === noteId && !cancelled && isExternalChange) {
-				if (formNoteRef.current.hasChanged) return;
+				const isSyncChange = changeSource === ItemChange.SOURCE_SYNC;
+				if (formNoteRef.current.hasChanged && !isSyncChange) return;
+
+				// A sync update is authoritative even if the user is continuously typing.
+				// Clear the form synchronously so the old editor is unmounted before any
+				// more edits can postpone or race the reload. SOURCE_DECRYPTION has the
+				// same value as SOURCE_SYNC, so an encrypted update stays hidden until the
+				// decryption save triggers a second, plaintext reload.
+				if (isSyncChange) clearFormNote(true);
 				refreshFormNote();
 			}
 		};
@@ -192,7 +200,7 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 			eventManager.off(EventName.ItemChange, listener);
 			cancelled = true;
 		};
-	}, [formNoteRef, noteId, editorId, refreshFormNote]);
+	}, [formNoteRef, noteId, editorId, refreshFormNote, clearFormNote]);
 };
 
 export default function useFormNote(dependencies: HookDependencies) {
@@ -246,6 +254,8 @@ export default function useFormNote(dependencies: HookDependencies) {
 			bodyChangeId: 0,
 			markup_language: n.markup_language,
 			saveActionQueue: new AsyncActionQueue(300),
+			isReloading: false,
+			reloadGeneration: formNoteRef.current.reloadGeneration,
 			originalCss: originalCss,
 			hasChanged: false,
 			user_updated_time: n.user_updated_time,
@@ -280,8 +290,9 @@ export default function useFormNote(dependencies: HookDependencies) {
 		return newFormNote;
 	}, []);
 
-	const clearFormNote = useCallback(() => {
-		formNoteRef.current = defaultFormNote();
+	const clearFormNote = useCallback((isReloading = false) => {
+		const reloadGeneration = formNoteRef.current.reloadGeneration + (isReloading ? 1 : 0);
+		formNoteRef.current = { ...defaultFormNote(), isReloading, reloadGeneration };
 		setFormNote(formNoteRef.current);
 	}, []);
 

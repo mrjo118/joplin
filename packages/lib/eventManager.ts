@@ -28,6 +28,7 @@ export enum EventName {
 export interface ItemChangeEvent {
 	itemType: ModelType;
 	itemId: string;
+	changeSource: number;
 	// Passing a changeId to Note.save causes that changeId to be included
 	// in the corresponding ItemChangeEvent. This allows determining which
 	// call to Note.save triggered the event.

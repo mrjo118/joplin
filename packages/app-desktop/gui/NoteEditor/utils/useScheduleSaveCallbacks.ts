@@ -27,6 +27,13 @@ const useScheduleSaveCallbacks = (props: Props) => {
 
 		const makeAction = (formNote: FormNote) => {
 			return async function() {
+				const saveIsObsolete = () => {
+					const currentFormNote = props.formNote.current;
+					if (currentFormNote?.isReloading) return true;
+					return currentFormNote?.id === formNote.id && currentFormNote.reloadGeneration !== formNote.reloadGeneration;
+				};
+				if (saveIsObsolete()) return;
+
 				// The lock state may change between scheduling and execution (e.g. encryption enabled
 				// from the note list menu), so the save uses the latest form state for this note.
 				const latestFormNote = props.formNote.current?.id === formNote.id ? props.formNote.current : formNote;
@@ -36,6 +43,7 @@ const useScheduleSaveCallbacks = (props: Props) => {
 				} else {
 					note = await formNoteToNote(formNote);
 				}
+				if (saveIsObsolete()) return;
 				logger.debug('Saving note...', isNoteLockEnabled() && note.is_locked ? note.id : note);
 				const savedNote = await Note.save(note, { changeId: `editorChange-${props.editorId}`, useNoteLock: true, noteLockKey: latestFormNote.noteLockKey });
 

@@ -88,6 +88,7 @@ export default class ItemChange extends BaseModel {
 				eventManager.emit(EventName.ItemChange, {
 					itemType: itemType,
 					itemId,
+					changeSource,
 					changeId,
 					eventType: type,
 				});

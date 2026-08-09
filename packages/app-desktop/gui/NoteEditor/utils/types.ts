@@ -201,6 +201,8 @@ export interface FormNote {
 	bodyChangeId: number;
 
 	saveActionQueue: AsyncActionQueue;
+	isReloading: boolean;
+	reloadGeneration: number;
 
 	// Note with markup_language = HTML have a block of CSS at the start, which is used
 	// to preserve the style from the original (web-clipped) page. When sending the note
@@ -225,6 +227,8 @@ export function defaultFormNote(): FormNote {
 		bodyWillChangeId: 0,
 		bodyChangeId: 0,
 		saveActionQueue: null,
+		isReloading: false,
+		reloadGeneration: 0,
 		originalCss: '',
 		hasChanged: false,
 		user_updated_time: 0,

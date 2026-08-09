@@ -240,6 +240,46 @@ describe('useFormNote', () => {
 		formNote.unmount();
 	});
 
+	it('should replace locally changed editor content when sync updates the open note', async () => {
+		const note = await Note.save({ title: 'Test Note!', body: 'Original' });
+		await ItemChange.waitForAllSaved();
+
+		const props = {
+			...defaultFormNoteProps,
+			noteId: note.id,
+		};
+		const formNote = renderHook(hookProps => useFormNote(hookProps), {
+			initialProps: props,
+		});
+
+		await waitFor(() => expect(formNote.result.current.formNote.id).toBe(note.id));
+
+		act(() => {
+			formNote.result.current.setFormNote(current => ({
+				...current,
+				body: 'Unsaved local typing',
+				hasChanged: true,
+			}));
+		});
+
+		await act(async () => {
+			await Note.save({ id: note.id, body: 'Remote update' }, {
+				changeSource: ItemChange.SOURCE_SYNC,
+			});
+		});
+		await waitFor(() => {
+			expect(formNote.result.current.formNote).toMatchObject({
+				id: note.id,
+				body: 'Remote update',
+				hasChanged: false,
+				isReloading: false,
+				reloadGeneration: 1,
+			});
+		});
+
+		formNote.unmount();
+	});
+
 	test('should refresh resource infos when changed outside the editor', async () => {
 		let note = await Note.save({});
 		note = await shim.attachFileToNote(note, join(supportDir, 'sample.txt'));
