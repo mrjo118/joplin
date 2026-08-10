@@ -240,6 +240,45 @@ describe('useFormNote', () => {
 		formNote.unmount();
 	});
 
+	it('should block a changed editor until an external note reload completes', async () => {
+		const note = await Note.save({ title: 'Original', body: 'Original body' });
+		await ItemChange.waitForAllSaved();
+		const formNote = renderHook(props => useFormNote(props), {
+			initialProps: { ...defaultFormNoteProps, noteId: note.id },
+		});
+
+		await waitFor(() => expect(formNote.result.current.formNote.id).toBe(note.id));
+		act(() => {
+			formNote.result.current.setFormNote(current => ({
+				...current,
+				body: 'Local typing',
+				hasChanged: true,
+			}));
+		});
+		const pendingSave = jest.fn();
+		formNote.result.current.formNote.saveActionQueue.push(pendingSave);
+
+		await act(async () => {
+			await Note.save({ id: note.id, title: 'Reloaded', body: 'Remote body' });
+			await ItemChange.waitForAllSaved();
+		});
+
+		await waitFor(() => {
+			expect(formNote.result.current.formNote).toMatchObject({
+				id: note.id,
+				title: 'Reloaded',
+				body: 'Remote body',
+				hasChanged: false,
+			});
+		});
+		await act(async () => {
+			await new Promise(resolve => setTimeout(resolve, 400));
+		});
+		expect(pendingSave).not.toHaveBeenCalled();
+
+		formNote.unmount();
+	});
+
 	test('should refresh resource infos when changed outside the editor', async () => {
 		let note = await Note.save({});
 		note = await shim.attachFileToNote(note, join(supportDir, 'sample.txt'));

@@ -182,7 +182,12 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 			// cause the note to refresh. (Undesired refreshes can cause the cursor to jump).
 			const isExternalChange = !(changeId ?? 'unknown').endsWith(editorId);
 			if (itemId === noteId && !cancelled && isExternalChange) {
-				if (formNoteRef.current.hasChanged) return;
+				// Remove the current editor before starting the asynchronous reload. This
+				// prevents further edits from postponing the refresh or changing the form
+				// while the replacement note is being loaded. initNoteState restores the
+				// editor only after the new form state is ready.
+				void formNoteRef.current.saveActionQueue?.reset();
+				clearFormNote();
 				refreshFormNote();
 			}
 		};
@@ -192,7 +197,7 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 			eventManager.off(EventName.ItemChange, listener);
 			cancelled = true;
 		};
-	}, [formNoteRef, noteId, editorId, refreshFormNote]);
+	}, [formNoteRef, noteId, editorId, refreshFormNote, clearFormNote]);
 };
 
 export default function useFormNote(dependencies: HookDependencies) {
