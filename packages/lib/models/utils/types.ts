@@ -56,6 +56,10 @@ export interface SaveOptions {
 	// Encrypt with this key captured when the note was decrypted, instead of the live session key.
 	// Lets a pending editor save complete after the session locks; a real key rotation still aborts it.
 	noteLockKey?: DecryptedNoteLockKey;
+	// Used by queued editor saves to avoid writing note contents captured before
+	// a later editor reload. Consumed by Note.save and never persisted.
+	editorNoteReloadTimeRequest?: number;
+	getEditorNoteReloadTimeRequest?: ()=> number;
 
 	changeSource?: number;
 

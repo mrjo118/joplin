@@ -205,6 +205,24 @@ describe('models/Note', () => {
 		expect(saved.title).toBe('fixed');
 	}));
 
+	it('should reject stale editor saves only for existing notes', async () => {
+		const existing = await Note.save({ title: 'Remote title' });
+		const staleResult = await Note.save({ ...existing, title: 'Stale editor title' }, {
+			editorNoteReloadTimeRequest: 1,
+			getEditorNoteReloadTimeRequest: () => 2,
+		});
+
+		expect(staleResult.title).toBe('Remote title');
+		expect((await Note.load(existing.id)).title).toBe('Remote title');
+
+		const newNote = await Note.save({ title: 'New note' }, {
+			editorNoteReloadTimeRequest: 1,
+			getEditorNoteReloadTimeRequest: () => 2,
+		});
+		expect(newNote.id).toBeTruthy();
+		expect((await Note.load(newNote.id)).title).toBe('New note');
+	});
+
 	it('should serialize and unserialize without modifying data', (async () => {
 		const folder1 = await Folder.save({ title: 'folder1' });
 		const testCases = [

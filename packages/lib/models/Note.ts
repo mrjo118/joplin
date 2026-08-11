@@ -896,6 +896,17 @@ export default class Note extends BaseItem {
 
 		syncDebugLog.info('Save Note: N:', o);
 
+		// Reject a queued editor save at the latest possible point before the
+		// database write. New notes have no oldNote and must always be saved.
+		if (
+			oldNote &&
+			options?.editorNoteReloadTimeRequest !== undefined &&
+			options.getEditorNoteReloadTimeRequest &&
+			options.getEditorNoteReloadTimeRequest() > options.editorNoteReloadTimeRequest
+		) {
+			return oldNote;
+		}
+
 		let savedNote = await super.save(o, options);
 
 		if (isNoteLockEnabled() && !!options?.useNoteLock && NoteLockNote.isLocking(o, oldNote)) {
