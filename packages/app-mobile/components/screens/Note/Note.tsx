@@ -813,11 +813,11 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		);
 	};
 
-	public makeSaveAction(state: State, editorNoteReloadTimeRequest: number) {
+	public makeSaveAction(state: State, noteLastLoadTime: number) {
 		return async () => {
 			return shared.saveNoteButton_press(this, state, null, {
-				editorNoteReloadTimeRequest,
-				getEditorNoteReloadTimeRequest: () => this.props.editorNoteReloadTimeRequest,
+				noteLastLoadTime,
+				getNoteLastLoadTime: () => this.state.noteLastLoadTime,
 			});
 		};
 	}
@@ -830,8 +830,8 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	}
 
 	public scheduleSave(state: State) {
-		const editorNoteReloadTimeRequest = this.props.editorNoteReloadTimeRequest;
-		this.saveActionQueue(state.note.id).push(this.makeSaveAction(state, editorNoteReloadTimeRequest));
+		const noteLastLoadTime = this.state.noteLastLoadTime;
+		this.saveActionQueue(state.note.id).push(this.makeSaveAction(state, noteLastLoadTime));
 	}
 
 	private async saveNoteButton_press(folderId: string = null) {
