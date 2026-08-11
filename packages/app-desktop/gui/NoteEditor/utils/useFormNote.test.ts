@@ -240,7 +240,7 @@ describe('useFormNote', () => {
 		formNote.unmount();
 	});
 
-	it('should block a changed editor until an external note reload completes', async () => {
+	it('should block a changed editor until a non-E2EE external note reload completes', async () => {
 		const note = await Note.save({ title: 'Original', body: 'Original body' });
 		await ItemChange.waitForAllSaved();
 		const formNote = renderHook(props => useFormNote(props), {
@@ -275,6 +275,7 @@ describe('useFormNote', () => {
 			await new Promise(resolve => setTimeout(resolve, 400));
 		});
 		expect(pendingSave).not.toHaveBeenCalled();
+		expect(formNote.result.current.isReloading).toBe(false);
 
 		formNote.unmount();
 	});

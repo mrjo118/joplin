@@ -124,7 +124,7 @@ function NoteEditorContent(props: NoteEditorProps) {
 		props.dispatch({ type: 'SET_ACTIVE_NOTE_IS_UNDECRYPTABLE', value, windowId });
 	}, [props.dispatch, windowId]);
 
-	const { formNote, setFormNote, isNewNote, resourceInfos, decryptFailed, loadBlocked } = useFormNote({
+	const { formNote, setFormNote, isNewNote, resourceInfos, decryptFailed, loadBlocked, isReloading } = useFormNote({
 		noteId: effectiveNoteId,
 		isProvisional: props.isProvisional,
 		titleInputRef: titleInputRef,
@@ -753,7 +753,7 @@ function NoteEditorContent(props: NoteEditorProps) {
 		}
 	}
 
-	if (formNote.encryption_applied || !formNote.id || !effectiveNoteId) {
+	if (isReloading || formNote.encryption_applied || !formNote.id || !effectiveNoteId) {
 		return renderNoNotes(styles.root);
 	}
 

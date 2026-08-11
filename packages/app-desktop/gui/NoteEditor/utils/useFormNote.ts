@@ -92,7 +92,7 @@ const loadNoteForForm = async (noteId: string): Promise<{ note: NoteEntity|null;
 };
 
 type InitNoteStateCallback = (note: NoteEntity, isNew: boolean)=> Promise<FormNote>;
-const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: string, noteId: string, initNoteState: InitNoteStateCallback, clearFormNote: ()=> void, builtInEditorVisible: boolean, noteLockSessionUnlocked: boolean, setDecryptFailed: (value: boolean)=> void, setLoadBlocked: (value: boolean)=> void) => {
+const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: string, noteId: string, initNoteState: InitNoteStateCallback, clearFormNote: ()=> void, builtInEditorVisible: boolean, noteLockSessionUnlocked: boolean, setDecryptFailed: (value: boolean)=> void, setLoadBlocked: (value: boolean)=> void, onExternalReloadStart: ()=> void, onExternalReloadComplete: ()=> void) => {
 	// Increasing the value of this counter cancels any ongoing note refreshes and starts
 	// a new refresh.
 	const [formNoteRefreshScheduled, setFormNoteRefreshScheduled] = useState<number>(0);
@@ -141,10 +141,11 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 				// A refresh is no longer scheduled
 				return 0;
 			});
+			onExternalReloadComplete();
 		};
 
 		await loadNote();
-	}, [formNoteRefreshScheduled, noteId, editorId, initNoteState, clearFormNote, setDecryptFailed]);
+	}, [formNoteRefreshScheduled, noteId, editorId, initNoteState, clearFormNote, setDecryptFailed, onExternalReloadComplete]);
 
 	const refreshFormNote = useCallback(() => {
 		// Increase the counter to cancel any ongoing refresh attempts
@@ -182,6 +183,7 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 			// cause the note to refresh. (Undesired refreshes can cause the cursor to jump).
 			const isExternalChange = !(changeId ?? 'unknown').endsWith(editorId);
 			if (itemId === noteId && !cancelled && isExternalChange) {
+				onExternalReloadStart();
 				// Remove the current editor before starting the asynchronous reload. This
 				// prevents further edits from postponing the refresh or changing the form
 				// while the replacement note is being loaded. initNoteState restores the
@@ -197,7 +199,7 @@ const useRefreshFormNoteOnChange = (formNoteRef: RefObject<FormNote>, editorId: 
 			eventManager.off(EventName.ItemChange, listener);
 			cancelled = true;
 		};
-	}, [formNoteRef, noteId, editorId, refreshFormNote, clearFormNote]);
+	}, [formNoteRef, noteId, editorId, refreshFormNote, clearFormNote, onExternalReloadStart]);
 };
 
 export default function useFormNote(dependencies: HookDependencies) {
@@ -206,6 +208,8 @@ export default function useFormNote(dependencies: HookDependencies) {
 	} = dependencies;
 
 	const [formNote, setFormNote] = useState<FormNote>(defaultFormNote());
+	const [reloadingNoteId, setReloadingNoteId] = useState<string|null>(null);
+	const reloadingNoteIdRef = useRef<string|null>(null);
 	const [isNewNote, setIsNewNote] = useState(false);
 	// Keyed by note id so a failure can never carry over to another note the user switches to.
 	const [decryptFailedId, setDecryptFailedId] = useState<string|null>(null);
@@ -290,7 +294,16 @@ export default function useFormNote(dependencies: HookDependencies) {
 		setFormNote(formNoteRef.current);
 	}, []);
 
-	useRefreshFormNoteOnChange(formNoteRef, editorId, noteId, initNoteState, clearFormNote, builtInEditorVisible, noteLockSessionUnlocked, setDecryptFailed, setLoadBlocked);
+	const onExternalReloadStart = useCallback(() => {
+		reloadingNoteIdRef.current = noteId;
+		setReloadingNoteId(noteId);
+	}, [noteId]);
+	const onExternalReloadComplete = useCallback(() => {
+		if (reloadingNoteIdRef.current !== noteId) return;
+		reloadingNoteIdRef.current = null;
+		setReloadingNoteId(null);
+	}, [noteId]);
+	useRefreshFormNoteOnChange(formNoteRef, editorId, noteId, initNoteState, clearFormNote, builtInEditorVisible, noteLockSessionUnlocked, setDecryptFailed, setLoadBlocked, onExternalReloadStart, onExternalReloadComplete);
 
 	useEffect(() => {
 		if (!noteId) {
@@ -401,6 +414,10 @@ export default function useFormNote(dependencies: HookDependencies) {
 	// changes, with no delay during which async code can run. Even a small delay (e.g. that introduced
 	// by a setState -> useEffect) can lead to a race condition. See https://github.com/laurent22/joplin/issues/8960.
 	const onSetFormNote: OnSetFormNote = useCallback(newFormNote => {
+		// Editor events already queued when an external change arrived can run while
+		// React is unmounting the editor. Do not let them restore the stale form or
+		// mark it changed, which would cancel the remote reload.
+		if (reloadingNoteIdRef.current) return;
 		let newNote;
 		if (typeof newFormNote === 'function') {
 			newNote = newFormNote(formNoteRef.current);
@@ -418,5 +435,6 @@ export default function useFormNote(dependencies: HookDependencies) {
 		resourceInfos,
 		decryptFailed: !!noteId && decryptFailedId === noteId,
 		loadBlocked: !!noteId && loadBlockedId === noteId,
+		isReloading: !!noteId && reloadingNoteId === noteId,
 	};
 }
