@@ -10,7 +10,7 @@ import { EditorControl } from '../../NoteEditor/types';
 import * as React from 'react';
 import { Keyboard, View, TextInput, StyleSheet, Linking, Share, NativeSyntheticEvent, useWindowDimensions } from 'react-native';
 import { Platform, PermissionsAndroid } from 'react-native';
-import { connect } from 'react-redux';
+import { connect, useStore } from 'react-redux';
 import Note from '@joplin/lib/models/Note';
 import BaseItem from '@joplin/lib/models/BaseItem';
 import Resource from '@joplin/lib/models/Resource';
@@ -42,7 +42,7 @@ import isEditableResource from '../../NoteEditor/ImageEditor/isEditableResource'
 import { ChangeEvent as EditorChangeEvent, SelectionRangeChangeEvent, UndoRedoDepthChangeEvent } from '@joplin/editor/events';
 import { join } from 'path';
 import { Dispatch } from 'redux';
-import { RefObject, useContext } from 'react';
+import { RefObject, useCallback, useContext } from 'react';
 import { getNoteCallbackUrl } from '@joplin/lib/callbackUrlUtils';
 import { AppState } from '../../../utils/types';
 import restoreItems from '@joplin/lib/services/trash/restoreItems';
@@ -130,6 +130,7 @@ interface ComponentProps extends Props {
 	dialogs: DialogControl;
 	visibleEditorPluginIds: string[];
 	lowVerticalSpace: boolean;
+	getEditorNoteReloadTimeRequest: ()=> number;
 }
 
 interface State {
@@ -193,7 +194,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	private editorPluginHandler_ = new EditorPluginHandler(PluginService.instance(), saveEvent => {
 		return shared.noteComponent_change(this, 'body', saveEvent.body);
 	});
-	private refreshKey: number | undefined;
+	private refreshKey: number;
 
 	public static navigationOptions(): { header: null } {
 		return { header: null };
@@ -201,6 +202,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 	public constructor(props: ComponentProps) {
 		super(props);
+		this.refreshKey = props.editorNoteReloadTimeRequest;
 
 		const initialMode = props.noteVisiblePanes?.includes('editor') ? 'edit' : 'view';
 
@@ -766,6 +768,10 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 	private async reloadNoteAndUpdateRefreshKey() {
 		await shared.reloadNote(this);
+		// shared.reloadNote resolves after calling setState, not after React has
+		// committed the loaded note. Keep saves associated with the previous
+		// generation blocked until that state update has actually settled.
+		await new Promise<void>(resolve => this.setState({}, resolve));
 		this.refreshKey = this.props.editorNoteReloadTimeRequest;
 	}
 
@@ -813,9 +819,16 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		);
 	};
 
-	public makeSaveAction(state: State) {
+	public makeSaveAction(state: State, editorNoteReloadTimeRequest: number) {
 		return async () => {
-			return shared.saveNoteButton_press(this, state, null, null);
+			const isSaveAllowed = () => {
+				return this.props.getEditorNoteReloadTimeRequest() <= editorNoteReloadTimeRequest;
+			};
+			// This action may have spent time in the debounced save queue. If an
+			// external update requested a reload since it was queued, its form state
+			// belongs to the old editor contents and must not be written.
+			if (!isSaveAllowed()) return;
+			return shared.saveNoteButton_press(this, state, null, { isSaveAllowed });
 		};
 	}
 
@@ -827,7 +840,10 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	}
 
 	public scheduleSave(state: State) {
-		this.saveActionQueue(state.note.id).push(this.makeSaveAction(state));
+		// refreshKey represents the note contents that have actually been loaded,
+		// whereas the prop can move on before reloadNote's setState has committed.
+		const editorNoteReloadTimeRequest = this.refreshKey;
+		this.saveActionQueue(state.note.id).push(this.makeSaveAction(state, editorNoteReloadTimeRequest));
 	}
 
 	private async saveNoteButton_press(folderId: string = null) {
@@ -1926,6 +1942,8 @@ const useHasLowAvailableSpace = () => {
 // how the new note should be rendered
 const NoteScreenWrapper = (props: Props) => {
 	const dialogs = useContext(DialogContext);
+	const store = useStore<AppState>();
+	const getEditorNoteReloadTimeRequest = useCallback(() => store.getState().editorNoteReloadTimeRequest, [store]);
 	const visibleEditorPluginIds = useVisiblePluginEditorViewIds(props.plugins, props.windowId);
 	const lowVerticalSpace = useHasLowAvailableSpace();
 
@@ -1935,6 +1953,7 @@ const NoteScreenWrapper = (props: Props) => {
 			dialogs={dialogs}
 			visibleEditorPluginIds={visibleEditorPluginIds}
 			lowVerticalSpace={lowVerticalSpace}
+			getEditorNoteReloadTimeRequest={getEditorNoteReloadTimeRequest}
 			{...props}
 		/>
 	);

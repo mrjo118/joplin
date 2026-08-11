@@ -41,6 +41,7 @@ export type AttachedResources = Record<string, AttachedResource>;
 
 export interface SaveNoteOptions {
 	autoTitle?: boolean;
+	isSaveAllowed?: ()=> boolean;
 }
 
 export interface BaseState {
@@ -127,9 +128,11 @@ shared.handleNoteDeletedWhileEditing_ = async (note: NoteEntity) => {
 
 shared.saveNoteButton_press = async function(comp: BaseNoteScreenComponent, state: BaseState, folderId: string = null, options: SaveNoteOptions = null) {
 	options = { autoTitle: true, ...options };
+	const isSaveAllowed = () => !options.isSaveAllowed || options.isSaveAllowed();
 	state = { ...comp.state, ...state };
 
 	const releaseMutex = await saveNoteMutex_.acquire();
+	if (!isSaveAllowed()) return releaseMutex();
 
 	let note = { ...state.note };
 
@@ -160,6 +163,9 @@ shared.saveNoteButton_press = async function(comp: BaseNoteScreenComponent, stat
 		if (saveOptions.fields && saveOptions.fields.indexOf('title') < 0) saveOptions.fields.push('title');
 	}
 
+	// The save may have waited for the mutex or other asynchronous preparation.
+	// Revalidate at the last possible point before changing the database.
+	if (!isSaveAllowed()) return releaseMutex();
 	const savedNote = 'fields' in saveOptions && !saveOptions.fields.length ? { ...note } : await Note.save(note, saveOptions);
 
 	const stateNote = comp.state.note;
