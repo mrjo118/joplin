@@ -900,9 +900,9 @@ export default class Note extends BaseItem {
 		// database write. New notes have no oldNote and must always be saved.
 		if (
 			oldNote &&
-			options?.noteLastLoadTime !== undefined &&
-			options.getNoteLastLoadTime &&
-			options.getNoteLastLoadTime() > options.noteLastLoadTime
+			options?.editorNoteReloadTimeRequest !== undefined &&
+			options.getEditorNoteReloadTimeRequest &&
+			options.getEditorNoteReloadTimeRequest() > options.editorNoteReloadTimeRequest
 		) {
 			return oldNote;
 		}

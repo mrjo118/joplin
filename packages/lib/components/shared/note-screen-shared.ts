@@ -41,8 +41,8 @@ export type AttachedResources = Record<string, AttachedResource>;
 
 export interface SaveNoteOptions {
 	autoTitle?: boolean;
-	noteLastLoadTime?: number;
-	getNoteLastLoadTime?: ()=> number;
+	editorNoteReloadTimeRequest?: number;
+	getEditorNoteReloadTimeRequest?: ()=> number;
 }
 
 export interface BaseState {
@@ -154,8 +154,8 @@ shared.saveNoteButton_press = async function(comp: BaseNoteScreenComponent, stat
 		userSideValidation: true,
 		fields: BaseModel.diffObjectsFields(state.lastSavedNote, note),
 		dispatchOptions: { preserveSelection: true },
-		noteLastLoadTime: options.noteLastLoadTime,
-		getNoteLastLoadTime: options.getNoteLastLoadTime,
+		editorNoteReloadTimeRequest: options.editorNoteReloadTimeRequest,
+		getEditorNoteReloadTimeRequest: options.getEditorNoteReloadTimeRequest,
 	};
 
 	const hasAutoTitle = state.newAndNoTitleChangeNoteId || (isProvisionalNote && !note.title);

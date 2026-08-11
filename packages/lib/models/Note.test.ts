@@ -208,16 +208,16 @@ describe('models/Note', () => {
 	it('should reject stale editor saves only for existing notes', async () => {
 		const existing = await Note.save({ title: 'Remote title' });
 		const staleResult = await Note.save({ ...existing, title: 'Stale editor title' }, {
-			noteLastLoadTime: 1,
-			getNoteLastLoadTime: () => 2,
+			editorNoteReloadTimeRequest: 1,
+			getEditorNoteReloadTimeRequest: () => 2,
 		});
 
 		expect(staleResult.title).toBe('Remote title');
 		expect((await Note.load(existing.id)).title).toBe('Remote title');
 
 		const newNote = await Note.save({ title: 'New note' }, {
-			noteLastLoadTime: 1,
-			getNoteLastLoadTime: () => 2,
+			editorNoteReloadTimeRequest: 1,
+			getEditorNoteReloadTimeRequest: () => 2,
 		});
 		expect(newNote.id).toBeTruthy();
 		expect((await Note.load(newNote.id)).title).toBe('New note');
