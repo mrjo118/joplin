@@ -325,7 +325,7 @@ shared.reloadNote = async (comp: BaseNoteScreenComponent, useDefaultEditorState 
 	}
 
 	// Prevent trashed notes and notes created via sharing from opening in edit mode.
-	if (note?.deleted_time || comp.props.sharedData) {
+	if (comp.props.sharedData) {
 		mode = 'view';
 	}
 

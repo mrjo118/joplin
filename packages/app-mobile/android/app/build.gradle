@@ -80,7 +80,7 @@ android {
 
     namespace "net.cozic.joplin"
     defaultConfig {
-        applicationId "net.cozic.joplin"
+        applicationId "net.cozic.joplin2"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
 		versionCode 2097813
