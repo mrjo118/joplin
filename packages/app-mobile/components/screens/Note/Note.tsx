@@ -122,6 +122,7 @@ interface Props extends BaseProps {
 	toolbarEnabled: boolean;
 	pluginHtmlContents: PluginHtmlContents;
 	editorNoteReloadTimeRequest: number;
+	forceEditorNoteReloadTimeRequest: number;
 	canPublish: boolean;
 	noteVisiblePanes: string[];
 }
@@ -709,7 +710,8 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		const editorPluginIdsChanged = this.props.visibleEditorPluginIds !== prevProps.visibleEditorPluginIds;
 		if (editorPluginIdsChanged || this.props.editorNoteReloadTimeRequest !== prevProps.editorNoteReloadTimeRequest) {
 			const { editorPlugin } = getShownPluginEditorView(this.props.plugins, this.props.windowId);
-			const explicitReloadRequired = !editorPlugin && this.props.editorNoteReloadTimeRequest > this.state.noteLastLoadTime;
+			const forceReloadRequired = this.props.forceEditorNoteReloadTimeRequest !== prevProps.forceEditorNoteReloadTimeRequest;
+			const explicitReloadRequired = forceReloadRequired || (!editorPlugin && this.props.editorNoteReloadTimeRequest > this.state.noteLastLoadTime);
 
 			if (explicitReloadRequired) {
 				this.reloadInProgress_ = true;
@@ -1998,6 +2000,7 @@ const NoteScreen = connect((state: AppState) => {
 		plugins: state.pluginService.plugins,
 		pluginHtmlContents: state.pluginService.pluginHtmlContents,
 		editorNoteReloadTimeRequest: state.editorNoteReloadTimeRequest,
+		forceEditorNoteReloadTimeRequest: state.windowEditorNoteReloadTimeRequest,
 		noteVisiblePanes: state.noteVisiblePanes,
 
 		editorType: state.settings['editor.codeView'] ? EditorType.Markdown : EditorType.RichText,
