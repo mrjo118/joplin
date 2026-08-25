@@ -130,6 +130,23 @@ test.describe('noteList', () => {
 		await noteList.expectNoteToBeSelected('test note 1');
 	});
 
+	test('switching from Trash to All notes should select the first non-trashed note', async ({ electronApp, mainWindow }) => {
+		const mainScreen = await new MainScreen(mainWindow).setup();
+		await mainScreen.createNewNote('note 1');
+		await mainScreen.createNewNote('note 2');
+
+		const noteList = mainScreen.noteList;
+		await noteList.sortByTitle(electronApp);
+		await noteList.getNoteItemByTitle('note 2').press('Delete');
+
+		await mainScreen.sidebar.container.getByText('Trash').click();
+		await noteList.expectNoteToBeSelected('note 2');
+
+		await mainScreen.sidebar.allNotes.click();
+		await noteList.expectNoteToBeSelected('note 1');
+		await expect(mainScreen.noteEditor.noteTitleInput).toHaveValue('note 1');
+	});
+
 	test('arrow keys should navigate the note list', async ({ electronApp, mainWindow }) => {
 		const mainScreen = await new MainScreen(mainWindow).setup();
 		const sidebar = mainScreen.sidebar;

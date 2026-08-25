@@ -287,10 +287,12 @@ export default class BaseApplication {
 		});
 
 		if (useSelectedNoteId) {
+			const selectedNoteId = state.selectedNoteIds?.[0];
+			const selectedNoteIsInList = selectedNoteId && notes.some(note => note.id === selectedNoteId);
 			this.store().dispatch({
 				type: 'NOTE_SELECT',
-				id: state.selectedNoteIds && state.selectedNoteIds.length ? state.selectedNoteIds[0] : null,
-				hash: noteHash,
+				id: selectedNoteIsInList ? selectedNoteId : notes[0]?.id ?? null,
+				hash: selectedNoteIsInList ? noteHash : '',
 			});
 		} else {
 			const lastSelectedNoteIds = stateUtils.lastSelectedNoteIds(state);
