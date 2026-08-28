@@ -343,7 +343,7 @@ export default class Synchronizer {
 	}
 
 	public isFullSync(steps: string[]) {
-		return steps.includes('update_remote') && steps.includes('delete_remote') && steps.includes('delta');
+		return steps.includes('update_remote') && steps.includes('delete_remote') && steps.includes('delta') && steps.includes('delete_remote_revs');
 	}
 
 	private async lockErrorStatus_() {
@@ -401,6 +401,7 @@ export default class Synchronizer {
 	// 1. UPLOAD: Send to the sync target the items that have changed since the last sync.
 	// 2. DELETE_REMOTE: Delete on the sync target, the items that have been deleted locally.
 	// 3. DELTA: Find on the sync target the items that have been modified or deleted and apply the changes locally.
+	// 4. DELETE_REMOTE_REVS: Delete revisions on the sync target that have been deleted locally.
 	public async start(options: SyncStartOptions = null) {
 		if (!options) options = {};
 
@@ -417,7 +418,7 @@ export default class Synchronizer {
 
 		const lastContext = options.context ? options.context : {};
 
-		const syncSteps = options.syncSteps ? options.syncSteps : ['update_remote', 'delete_remote', 'delta'];
+		const syncSteps = options.syncSteps ? options.syncSteps : ['update_remote', 'delete_remote', 'delta', 'delete_remote_revs'];
 
 		// The default is to log errors, but when testing it's convenient to be able to catch and verify errors
 		const throwOnError = options.throwOnError === true;
@@ -603,6 +604,7 @@ export default class Synchronizer {
 					},
 					this.api(),
 					action => { return this.dispatch(action); },
+					false,
 				);
 			} // DELETE_REMOTE STEP
 
@@ -1207,6 +1209,37 @@ export default class Synchronizer {
 					await BaseItem.deleteOrphanSyncItems();
 				}
 			} // DELTA STEP
+
+			// ========================================================================
+			// 4. DELETE_REMOTE_REVS
+			// ------------------------------------------------------------------------
+			// Delete remote revisions only after the rest of a full sync has completed.
+			// This is deferred in it's own step because if remote revision deletions are
+			// handled in the delete_remote step, the revision cleaner can clean many
+			// revisions before the sync has run, and when it does run, it could upload
+			// many unnecessary deletions, for items which may have already been deleted
+			// on the sync target. Deferring this until after the delta step ensures
+			// unnecessary revision deletions will not occur, and won't block other
+			// changes from being synced either.
+			// ========================================================================
+
+			if (syncSteps.indexOf('delete_remote_revs') >= 0) {
+				await syncDeleteStep(
+					syncTargetId,
+					() => {
+						return this.cancelling();
+					},
+					(action, local, logSyncOperation, message, actionCount) => {
+						this.logSyncOperation(action, local, logSyncOperation, message, actionCount);
+					},
+					(fnName, ...args) => {
+						return this.apiCall(fnName, ...args);
+					},
+					this.api(),
+					action => { return this.dispatch(action); },
+					true,
+				);
+			} // DELETE_REMOTE_REVS STEP
 		} catch (error) {
 			hasCaughtError = true;
 

@@ -3,6 +3,7 @@ import BaseModel, { ModelType } from '../../../BaseModel';
 import BaseItem from '../../../models/BaseItem';
 import ItemChange from '../../../models/ItemChange';
 import Resource from '../../../models/Resource';
+import Revision from '../../../models/Revision';
 import time from '../../../time';
 import resourceRemotePath from './resourceRemotePath';
 import { ApiCallFunction, LogSyncOperationFunction, SyncAction } from './types';
@@ -18,12 +19,13 @@ export default async (
 	apiCall: ApiCallFunction,
 	api: FileApi,
 	dispatch: Dispatch,
+	revisionsOnly = false,
 ) => {
 	const supportsBatchDelete = api.supportsMultiDelete;
-	let toDelete = await BaseItem.deletedItems(syncTargetId);
+	let toDelete = await BaseItem.deletedItems(syncTargetId, revisionsOnly);
 
 	if (supportsBatchDelete) {
-		toDelete = await batchDeleteStep(toDelete, syncTargetId, cancelling, apiCall, logSyncOperation);
+		toDelete = await batchDeleteStep(toDelete, syncTargetId, cancelling, apiCall, logSyncOperation, revisionsOnly);
 	}
 
 	for (let i = 0; i < toDelete.length; i++) {
@@ -32,6 +34,7 @@ export default async (
 		const item = toDelete[i];
 		const path = systemPath(item);
 		const isResource = item.item_type === BaseModel.TYPE_RESOURCE;
+		let deletedRemotely = false;
 
 		try {
 			await apiCall('delete', path);
@@ -40,6 +43,7 @@ export default async (
 				const remoteContentPath = resourceRemotePath(item.item_id);
 				await apiCall('delete', remoteContentPath);
 			}
+			deletedRemotely = true;
 
 			logSyncOperation(SyncAction.DeleteRemote, null, { id: item.item_id }, 'local has been deleted');
 		} catch (error) {
@@ -76,6 +80,11 @@ export default async (
 			}
 		}
 
+		// A full delta from an empty cursor can restore a revision between the initial
+		// non-revision delete step and this final revision delete step.
+		if (revisionsOnly && deletedRemotely) {
+			await Revision.delete(item.item_id, { trackDeleted: false });
+		}
 		await BaseItem.remoteDeletedItems(syncTargetId, [item.item_id]);
 	}
 };
@@ -95,6 +104,7 @@ const batchDeleteStep = async (
 	cancellingSync: ()=> boolean,
 	apiCall: ApiCallFunction,
 	logSyncOperation: LogSyncOperationFunction,
+	revisionsOnly: boolean,
 ) => {
 	let supported = true;
 	const cancelling = () => {
@@ -151,6 +161,9 @@ const batchDeleteStep = async (
 					}
 					toRetryIndividually.push(item);
 				}
+			}
+			if (revisionsOnly) {
+				await Revision.batchDelete(successfulItems.map(item => item.item_id), { trackDeleted: false });
 			}
 			await BaseItem.remoteDeletedItems(syncTargetId, successfulItems.map(item => item.item_id));
 		} catch (error) {

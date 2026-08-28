@@ -373,8 +373,9 @@ export default class BaseItem extends BaseModel {
 	// - Client 1 syncs with target 2 only => the note is *not* deleted from target 2 because no information
 	//   that it was previously deleted exist (deleted_items entry has been deleted).
 	// The solution would be to permanently store the list of deleted items on each client.
-	public static deletedItems(syncTarget: number): Promise<DeletedItemEntity[]> {
-		return this.db().selectAll('SELECT * FROM deleted_items WHERE sync_target = ?', [syncTarget]);
+	public static deletedItems(syncTarget: number, revisionsOnly = false): Promise<DeletedItemEntity[]> {
+		const revisionOperator = revisionsOnly ? '=' : '!=';
+		return this.db().selectAll(`SELECT * FROM deleted_items WHERE sync_target = ? AND item_type ${revisionOperator} ?`, [syncTarget, ModelType.Revision]);
 	}
 
 	public static async deletedItemCount(syncTarget: number) {
