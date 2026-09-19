@@ -3,6 +3,8 @@ import { TouchableOpacity, TouchableWithoutFeedback, Text, Modal, View, LayoutRe
 import { ReactElement, useCallback, useMemo, useRef, useState } from 'react';
 import { _ } from '@joplin/lib/locale';
 import useSafeAreaPadding from '../utils/hooks/useSafeAreaPadding';
+import FocusControl from './accessibility/FocusControl/FocusControl';
+import { ModalState } from './accessibility/FocusControl/types';
 
 type ValueType = string;
 export interface DropdownListItem {
@@ -173,37 +175,39 @@ const Dropdown: React.FC<DropdownProps> = props => {
 				onRequestClose={onCloseList}
 				supportedOrientations={['landscape', 'portrait']}
 			>
-				<TouchableWithoutFeedback
-					accessibilityElementsHidden={true}
-					importantForAccessibility='no-hide-descendants'
-					aria-hidden={true}
-					onPress={onCloseList}
-					style={styles.backgroundCloseButton}
-				>
-					<View style={{ flex: 1 }}/>
-				</TouchableWithoutFeedback>
+				<FocusControl.ModalWrapper state={listVisible ? ModalState.Open : ModalState.Closed}>
+					<TouchableWithoutFeedback
+						accessibilityElementsHidden={true}
+						importantForAccessibility='no-hide-descendants'
+						aria-hidden={true}
+						onPress={onCloseList}
+						style={styles.backgroundCloseButton}
+					>
+						<View style={{ flex: 1 }}/>
+					</TouchableWithoutFeedback>
 
-				<View
-					accessibilityRole='menu'
-					style={styles.wrapper}
-				>
-					<FlatList
-						ref={onListLoad}
-						style={styles.itemList}
-						data={items}
-						extraData={props.selectedValue}
-						renderItem={itemRenderer}
-						ListHeaderComponent={<View style={styles.listHeader}/>}
-						ListFooterComponent={<View style={styles.listFooter}/>}
-						getItemLayout={(_data, index) => ({
-							length: itemHeight,
-							offset: itemHeight * index,
-							index,
-						})}
-					/>
-				</View>
+					<View
+						accessibilityRole='menu'
+						style={styles.wrapper}
+					>
+						<FlatList
+							ref={onListLoad}
+							style={styles.itemList}
+							data={items}
+							extraData={props.selectedValue}
+							renderItem={itemRenderer}
+							ListHeaderComponent={<View style={styles.listHeader}/>}
+							ListFooterComponent={<View style={styles.listFooter}/>}
+							getItemLayout={(_data, index) => ({
+								length: itemHeight,
+								offset: itemHeight * index,
+								index,
+							})}
+						/>
+					</View>
 
-				{screenReaderCloseMenuButton}
+					{screenReaderCloseMenuButton}
+				</FocusControl.ModalWrapper>
 			</Modal>
 		</View>
 	);

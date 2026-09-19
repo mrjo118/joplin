@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useContext } from 'react';
 import { Text } from 'react-native';
 
 import { describe, it, expect, jest } from '@jest/globals';
@@ -7,6 +8,7 @@ import { fireEvent, render, screen, waitFor } from '../utils/testing/testingLibr
 import Dropdown, { DropdownListItem } from './Dropdown';
 import TestProviderStack from './testing/TestProviderStack';
 import createMockReduxStore from '../utils/testing/createMockReduxStore';
+import { FocusControlContext } from './accessibility/FocusControl/FocusControlProvider';
 
 interface WrappedDropdownProps {
 	items: DropdownListItem[];
@@ -16,6 +18,11 @@ interface WrappedDropdownProps {
 }
 
 const store = createMockReduxStore();
+
+const ModalStateIndicator = () => {
+	const { hasOpenModal } = useContext(FocusControlContext);
+	return <Text testID='has-open-modal'>{hasOpenModal.toString()}</Text>;
+};
 
 const WrappedDropdown: React.FC<WrappedDropdownProps> = props => {
 	// A provider stack is needed here to to prevent "No safe area value available" render errors
@@ -102,5 +109,23 @@ describe('Dropdown', () => {
 			expect(screen.queryByText('Test2')).toBeNull();
 		});
 		expect(screen.queryByText('Elem Right')).not.toBeNull();
+	});
+
+	it('should register the open list as a modal', async () => {
+		render(
+			<TestProviderStack store={store}>
+				<Dropdown
+					items={[{ label: 'Test1', value: '1' }, { label: 'Test2', value: '2' }]}
+					selectedValue='1'
+					onValueChange={() => {}}
+				/>
+				<ModalStateIndicator />
+			</TestProviderStack>,
+		);
+
+		expect(screen.getByTestId('has-open-modal')).toHaveTextContent('false');
+		fireEvent.press(screen.getByText('Test1'));
+
+		await waitFor(() => expect(screen.getByTestId('has-open-modal')).toHaveTextContent('true'));
 	});
 });

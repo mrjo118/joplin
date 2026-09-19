@@ -2,11 +2,12 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { AccessibilityInfo, Animated, Dimensions, Easing, I18nManager, LayoutChangeEvent, PanResponder, PanResponderGestureState, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { State } from '@joplin/lib/reducer';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AccessibleView from './accessibility/AccessibleView';
 import { _ } from '@joplin/lib/locale';
 import useReduceMotionEnabled from '../utils/hooks/useReduceMotionEnabled';
 import { themeStyle } from './global-style';
+import { FocusControlContext } from './accessibility/FocusControl/FocusControlProvider';
 
 export enum SideMenuPosition {
 	Left = 'left',
@@ -175,6 +176,7 @@ const useAnimations = ({ menuWidth, isLeftMenu, open }: UseAnimationsProps) => {
 
 const SideMenuComponent: React.FC<Props> = props => {
 	const [open, setIsOpen] = useState(false);
+	const { hasOpenModal } = useContext(FocusControlContext);
 
 	useEffect(() => {
 		setIsOpen(props.isOpen);
@@ -211,7 +213,7 @@ const SideMenuComponent: React.FC<Props> = props => {
 	const panResponder = useMemo(() => {
 		return PanResponder.create({
 			onMoveShouldSetPanResponderCapture: (_event, gestureState) => {
-				if (props.disableGestures) {
+				if (props.disableGestures || hasOpenModal) {
 					return false;
 				}
 
@@ -263,7 +265,7 @@ const SideMenuComponent: React.FC<Props> = props => {
 				onGestureEnd(gestureState);
 			},
 		});
-	}, [isLeftMenu, menuDragOffset, props.toleranceX, props.minHorizontalSwipe, open, props.disableGestures, props.disableOpenGesture, onGestureEnd, beginAnimating]);
+	}, [isLeftMenu, menuDragOffset, props.toleranceX, props.minHorizontalSwipe, open, props.disableGestures, props.disableOpenGesture, hasOpenModal, onGestureEnd, beginAnimating]);
 
 	const onChangeRef = useRef(props.onChange);
 	onChangeRef.current = props.onChange;
