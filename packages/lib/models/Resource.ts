@@ -376,10 +376,6 @@ export default class Resource extends BaseItem {
 		await this.db().exec('INSERT INTO resources_to_download (resource_id, updated_time, created_time) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM resources_to_download WHERE resource_id = ?)', [resourceId, t, t, resourceId]);
 	}
 
-	public static async unmarkForDownload(resourceId: string) {
-		await this.db().exec('DELETE FROM resources_to_download WHERE resource_id = ?', [resourceId]);
-	}
-
 	public static async downloadedButEncryptedBlobCount(excludedIds: string[] = null) {
 		let excludedSql = '';
 		if (excludedIds && excludedIds.length) {
