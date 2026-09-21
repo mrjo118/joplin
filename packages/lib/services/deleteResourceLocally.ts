@@ -22,6 +22,9 @@ const deleteResourceLocally = async (resourceId: string) => {
 		fetch_status: Resource.FETCH_STATUS_IDLE,
 		fetch_error: '',
 	});
+	// Prevent the resource fetcher from immediately restoring the deleted file.
+	// Opening content that needs it will mark it for download again.
+	await Resource.unmarkForDownload(resource.id);
 };
 
 export default deleteResourceLocally;

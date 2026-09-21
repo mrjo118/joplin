@@ -112,6 +112,18 @@ describe('models/Resource', () => {
 		expect(!ls.id).toBe(true);
 	}));
 
+	it('should stop fetching a resource after it is unmarked for download', async () => {
+		const resource = await Resource.save({ title: 'resource', mime: 'application/octet-stream' }, { isNew: true });
+		await Resource.setLocalState(resource, { fetch_status: Resource.FETCH_STATUS_IDLE });
+		await Resource.markForDownload(resource.id);
+
+		expect((await Resource.needToBeFetched('manual')).map(item => item.id)).toContain(resource.id);
+
+		await Resource.unmarkForDownload(resource.id);
+
+		expect((await Resource.needToBeFetched('manual')).map(item => item.id)).not.toContain(resource.id);
+	});
+
 	it('should resize the resource if the image is below the required dimensions', (async () => {
 		const folder1 = await Folder.save({ title: 'folder1' });
 		const note1 = await Note.save({ title: 'ma note', parent_id: folder1.id });

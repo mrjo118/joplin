@@ -104,6 +104,7 @@ describe('resourceScreenUtils', () => {
 		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
 		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
 		const setLocalState = jest.spyOn(Resource, 'setLocalState').mockResolvedValue();
+		const unmarkForDownload = jest.spyOn(Resource, 'unmarkForDownload').mockResolvedValue();
 		const exists = jest.fn().mockResolvedValue(true);
 		const remove = jest.fn().mockResolvedValue(undefined);
 		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists, remove } as unknown as ReturnType<typeof shim.fsDriver>);
@@ -114,6 +115,7 @@ describe('resourceScreenUtils', () => {
 			fetch_status: Resource.FETCH_STATUS_IDLE,
 			fetch_error: '',
 		});
+		expect(unmarkForDownload).toHaveBeenCalledWith(resource.id);
 		expect(remove.mock.calls).toEqual([['/resource.txt'], ['/resource.crypted']]);
 	});
 
@@ -123,11 +125,13 @@ describe('resourceScreenUtils', () => {
 		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
 		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
 		const setLocalState = jest.spyOn(Resource, 'setLocalState').mockResolvedValue();
+		const unmarkForDownload = jest.spyOn(Resource, 'unmarkForDownload').mockResolvedValue();
 		const remove = jest.fn().mockResolvedValue(undefined);
 		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists: jest.fn().mockResolvedValue(true), remove } as unknown as ReturnType<typeof shim.fsDriver>);
 
 		await expect(deleteResourceLocally(resource.id)).rejects.toThrow('downloaded or decrypted');
 		expect(setLocalState).not.toHaveBeenCalled();
+		expect(unmarkForDownload).not.toHaveBeenCalled();
 		expect(remove).not.toHaveBeenCalled();
 	});
 });
