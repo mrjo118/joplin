@@ -14,10 +14,11 @@ import Resource, { NoteResourceSortDirection, NoteResourceSortField } from '@jop
 import { ResourceEntity } from '@joplin/lib/services/database/types';
 import { substrWithEllipsis } from '@joplin/lib/string-utils';
 import shim from '@joplin/lib/shim';
+import Setting from '@joplin/lib/models/Setting';
 import showResource from '../../commands/util/showResource';
 import { bytesToHuman } from '@joplin/utils/bytes';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { buildResourceMarkdownLink, nextSortState } from './resourceScreenUtils';
+import { buildResourceMarkdownLink, deleteResourceLocally, nextSortState } from './resourceScreenUtils';
 
 interface Props {
 	themeId: number;
@@ -261,14 +262,33 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 	const onDeleteResource = useCallback(async (resource: ResourceEntity) => {
 		if (!resource.id) return;
 
-		const confirmed = await shim.showConfirmationDialog(_('Delete attachment "%s"?', substrWithEllipsis(displayTitle(resource), 0, 50)));
-		if (!confirmed) return;
+		const cancelButtonIndex = 0;
+		const deleteLocallyButtonIndex = 1;
+		const deleteEverywhereButtonIndex = 2;
+		const message = _('Delete attachment "%s"?', substrWithEllipsis(displayTitle(resource), 0, 50));
+		let selection = deleteEverywhereButtonIndex;
+		if (Setting.value('sync.resourceDownloadMode') === 'always') {
+			if (!await shim.showConfirmationDialog(message)) selection = cancelButtonIndex;
+		} else {
+			selection = await shim.showMessageBox(message, {
+				buttons: [_('Cancel'), _('Delete locally'), _('Delete everywhere')],
+				buttonStyles: ['cancel', 'destructive', 'destructive'],
+				cancelId: cancelButtonIndex,
+			});
+		}
+		if (selection === cancelButtonIndex) return;
 		if (!isMountedRef.current) return;
 
 		setDeletingResourceIds(previous => previous.concat(resource.id));
 
 		try {
-			await Resource.delete(resource.id, { sourceDescription: 'ResourceScreen' });
+			if (selection === deleteLocallyButtonIndex) {
+				await deleteResourceLocally(resource.id);
+			} else if (selection === deleteEverywhereButtonIndex) {
+				await Resource.delete(resource.id, { sourceDescription: 'ResourceScreen' });
+			} else {
+				return;
+			}
 			await loadPage(0);
 		} catch (error: unknown) {
 			if (!isMountedRef.current) return;

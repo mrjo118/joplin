@@ -58,6 +58,7 @@ export enum MessageBoxType {
 export interface ShowMessageBoxOptions {
 	title?: string;
 	buttons?: string[];
+	buttonStyles?: ('cancel'|'default'|'destructive')[];
 	type?: MessageBoxType;
 	defaultId?: number;
 	cancelId?: number;

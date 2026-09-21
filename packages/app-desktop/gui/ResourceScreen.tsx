@@ -8,6 +8,8 @@ import { themeStyle } from '@joplin/lib/theme';
 import bridge from '../services/bridge';
 import prettyBytes = require('pretty-bytes');
 import Resource from '@joplin/lib/models/Resource';
+import Setting from '@joplin/lib/models/Setting';
+import deleteResourceLocally from '@joplin/lib/services/deleteResourceLocally';
 import { LoadOptions } from '@joplin/lib/models/utils/types';
 import { AppState } from '../app.reducer';
 
@@ -232,14 +234,29 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 	}
 
 	public onResourceDelete(resource: InnerResource) {
-		const ok = bridge().showConfirmMessageBox(_('Delete attachment "%s"?', resource.title), {
-			buttons: [_('Delete'), _('Cancel')],
-			defaultId: 1,
-		});
-		if (!ok) {
-			return;
+		const cancelButtonIndex = 0;
+		const deleteLocallyButtonIndex = 1;
+		const deleteEverywhereButtonIndex = 2;
+		const message = _('Delete attachment "%s"?', resource.title);
+		let selection = deleteEverywhereButtonIndex;
+		if (Setting.value('sync.resourceDownloadMode') === 'always') {
+			const confirmed = bridge().showConfirmMessageBox(message, {
+				buttons: [_('Delete'), _('Cancel')],
+				defaultId: 1,
+			});
+			if (!confirmed) selection = cancelButtonIndex;
+		} else {
+			selection = bridge().showMessageBox(message, {
+				buttons: [_('Cancel'), _('Delete locally'), _('Delete everywhere')],
+				cancelId: cancelButtonIndex,
+			});
 		}
-		Resource.delete(resource.id, { sourceDescription: 'ResourceScreen' })
+		if (selection === cancelButtonIndex) return;
+
+		const deleteOperation = selection === deleteLocallyButtonIndex ?
+			deleteResourceLocally(resource.id) :
+			Resource.delete(resource.id, { sourceDescription: 'ResourceScreen' });
+		deleteOperation
 		// eslint-disable-next-line promise/prefer-await-to-then -- Old code before rule was applied
 			.catch((error: Error) => {
 				console.error(error);

@@ -26,7 +26,7 @@ const makeShowMessageBox = (dialogControl: null|RefObject<DialogControl>) => (me
 			buttons = options.buttons.map((text, index) => {
 				return {
 					text,
-					style: index === options.cancelId ? 'cancel' : 'default',
+					style: options.buttonStyles?.[index] ?? (index === options.cancelId ? 'cancel' : 'default'),
 					onPress: () => resolve(index),
 				};
 			});

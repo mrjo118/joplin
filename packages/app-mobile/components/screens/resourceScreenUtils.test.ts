@@ -1,7 +1,13 @@
 import { ResourceEntity } from '@joplin/lib/services/database/types';
-import { buildResourceMarkdownLink, nextSortState } from './resourceScreenUtils';
+import Resource from '@joplin/lib/models/Resource';
+import shim from '@joplin/lib/shim';
+import { buildResourceMarkdownLink, deleteResourceLocally, nextSortState } from './resourceScreenUtils';
 
 describe('resourceScreenUtils', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	test.each([
 		['title', 'asc', 'title', { sortField: 'title', sortDirection: 'desc' }],
 		['size', 'desc', 'size', { sortField: 'size', sortDirection: 'asc' }],
@@ -90,5 +96,38 @@ describe('resourceScreenUtils', () => {
 
 	test('buildResourceMarkdownLink should return empty string without a resource id', () => {
 		expect(buildResourceMarkdownLink({ title: 'photo.jpg' } as ResourceEntity)).toBe('');
+	});
+
+	test('deleteResourceLocally should remove decrypted local resource files', async () => {
+		const resource = { id: 'resource-id', encryption_blob_encrypted: 0 } as ResourceEntity;
+		jest.spyOn(Resource, 'load').mockResolvedValue(resource);
+		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
+		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
+		const setLocalState = jest.spyOn(Resource, 'setLocalState').mockResolvedValue();
+		const exists = jest.fn().mockResolvedValue(true);
+		const remove = jest.fn().mockResolvedValue(undefined);
+		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists, remove } as unknown as ReturnType<typeof shim.fsDriver>);
+
+		await deleteResourceLocally(resource.id);
+
+		expect(setLocalState).toHaveBeenCalledWith(resource, {
+			fetch_status: Resource.FETCH_STATUS_IDLE,
+			fetch_error: '',
+		});
+		expect(remove.mock.calls).toEqual([['/resource.txt'], ['/resource.crypted']]);
+	});
+
+	test('deleteResourceLocally should preserve a blob that is still encrypted', async () => {
+		const resource = { id: 'resource-id', encryption_blob_encrypted: 1 } as ResourceEntity;
+		jest.spyOn(Resource, 'load').mockResolvedValue(resource);
+		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
+		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
+		const setLocalState = jest.spyOn(Resource, 'setLocalState').mockResolvedValue();
+		const remove = jest.fn().mockResolvedValue(undefined);
+		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists: jest.fn().mockResolvedValue(true), remove } as unknown as ReturnType<typeof shim.fsDriver>);
+
+		await expect(deleteResourceLocally(resource.id)).rejects.toThrow('downloaded or decrypted');
+		expect(setLocalState).not.toHaveBeenCalled();
+		expect(remove).not.toHaveBeenCalled();
 	});
 });

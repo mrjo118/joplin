@@ -1,6 +1,7 @@
 import Resource, { NoteResourceSortDirection, NoteResourceSortField } from '@joplin/lib/models/Resource';
 import markdownUtils from '@joplin/lib/markdownUtils';
 import { ResourceEntity } from '@joplin/lib/services/database/types';
+export { default as deleteResourceLocally } from '@joplin/lib/services/deleteResourceLocally';
 
 interface NoteResourceSortState {
 	sortField: NoteResourceSortField;

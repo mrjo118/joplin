@@ -38,4 +38,22 @@ describe('makeShowMessageBox', () => {
 		// Should resolve to -1 when there is no cancel button
 		expect(await showMessageBox('test', { type: MessageBoxType.Error })).toBe(-1);
 	});
+
+	test('should apply button styles', async () => {
+		const dialogControl = makeMockDialogControl(buttons => {
+			expect(buttons).toMatchObject([
+				{ text: 'Cancel', style: 'cancel' },
+				{ text: 'Delete locally', style: 'destructive' },
+				{ text: 'Delete everywhere', style: 'destructive' },
+			]);
+			buttons[2].onPress();
+		});
+		const showMessageBox = makeShowMessageBox({ current: dialogControl });
+
+		await expect(showMessageBox('test', {
+			buttons: ['Cancel', 'Delete locally', 'Delete everywhere'],
+			buttonStyles: ['cancel', 'destructive', 'destructive'],
+			cancelId: 0,
+		})).resolves.toBe(2);
+	});
 });
