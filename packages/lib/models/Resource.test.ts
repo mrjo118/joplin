@@ -6,6 +6,7 @@ import shim from '../shim';
 import { ErrorCode } from '../errors';
 import { remove, pathExists } from 'fs-extra';
 import { ResourceEntity, ResourceOcrStatus } from '../services/database/types';
+import Setting from './Setting';
 
 const testImagePath = `${supportDir}/photo.jpg`;
 
@@ -120,6 +121,18 @@ describe('models/Resource', () => {
 		expect((await Resource.load(resource.id)).encryption_blob_encrypted).toBe(1);
 		expect((await Resource.localState(resource.id)).fetch_status).toBe(Resource.FETCH_STATUS_IDLE);
 		expect((await Resource.needToBeFetched('auto')).map(item => item.id)).toContain(resource.id);
+	});
+
+	it('should only allow local deletion after the resource has finished syncing', async () => {
+		const resource = await Resource.save({ title: 'resource', mime: 'application/octet-stream' }, { isNew: true });
+		const settingValue = jest.spyOn(Setting, 'value').mockImplementation((key: string) => key === 'sync.target' ? 2 : null);
+
+		expect(await Resource.canDeleteLocalFile(resource)).toBe(false);
+
+		await Resource.saveSyncTime(2, resource, resource.updated_time);
+		expect(await Resource.canDeleteLocalFile(resource)).toBe(true);
+		expect(await Resource.canDeleteLocalFile({ ...resource, blob_updated_time: resource.updated_time + 1 })).toBe(false);
+		settingValue.mockRestore();
 	});
 
 	it('should resize the resource if the image is below the required dimensions', (async () => {

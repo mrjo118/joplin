@@ -13,6 +13,9 @@ const deleteResourceLocally = async (resourceId: string) => {
 	if (resource.encryption_blob_encrypted || localState.fetch_status !== Resource.FETCH_STATUS_DONE || !plainTextExists) {
 		throw new Error(_('This attachment cannot be deleted locally while it is being downloaded or decrypted.'));
 	}
+	if (!await Resource.canDeleteLocalFile(resource)) {
+		throw new Error(_('This attachment cannot be deleted locally until it has been uploaded by synchronisation.'));
+	}
 
 	await shim.fsDriver().remove(plainTextPath);
 	if (await shim.fsDriver().exists(encryptedPath)) {

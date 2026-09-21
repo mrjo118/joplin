@@ -403,6 +403,16 @@ export default class Resource extends BaseItem {
 		await this.db().transactionExecBatch(queries);
 	}
 
+	public static async canDeleteLocalFile(resource: ResourceEntity) {
+		const syncTarget = Number(Setting.value('sync.target'));
+		if (!syncTarget) return false;
+
+		const syncItem = await this.syncItem(syncTarget, resource.id, { fields: ['sync_time', 'force_sync'] });
+		if (!syncItem || syncItem.force_sync) return false;
+
+		return syncItem.sync_time >= resource.updated_time && syncItem.sync_time >= resource.blob_updated_time;
+	}
+
 	public static async downloadedButEncryptedBlobCount(excludedIds: string[] = null) {
 		let excludedSql = '';
 		if (excludedIds && excludedIds.length) {

@@ -103,6 +103,7 @@ describe('resourceScreenUtils', () => {
 		jest.spyOn(Resource, 'load').mockResolvedValue(resource);
 		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
 		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
+		jest.spyOn(Resource, 'canDeleteLocalFile').mockResolvedValue(true);
 		jest.spyOn(Resource, 'shouldBlobBeEncrypted').mockResolvedValue(true);
 		const setLocalFileMissing = jest.spyOn(Resource, 'setLocalFileMissing').mockResolvedValue();
 		const exists = jest.fn().mockResolvedValue(true);
@@ -120,11 +121,27 @@ describe('resourceScreenUtils', () => {
 		jest.spyOn(Resource, 'load').mockResolvedValue(resource);
 		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
 		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
+		jest.spyOn(Resource, 'canDeleteLocalFile').mockResolvedValue(true);
 		const setLocalFileMissing = jest.spyOn(Resource, 'setLocalFileMissing').mockResolvedValue();
 		const remove = jest.fn().mockResolvedValue(undefined);
 		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists: jest.fn().mockResolvedValue(true), remove } as unknown as ReturnType<typeof shim.fsDriver>);
 
 		await expect(deleteResourceLocally(resource.id)).rejects.toThrow('downloaded or decrypted');
+		expect(setLocalFileMissing).not.toHaveBeenCalled();
+		expect(remove).not.toHaveBeenCalled();
+	});
+
+	test('deleteResourceLocally should preserve a resource that has not finished uploading', async () => {
+		const resource = { id: 'resource-id', encryption_blob_encrypted: 0 } as ResourceEntity;
+		jest.spyOn(Resource, 'load').mockResolvedValue(resource);
+		jest.spyOn(Resource, 'localState').mockResolvedValue({ fetch_status: Resource.FETCH_STATUS_DONE });
+		jest.spyOn(Resource, 'fullPath').mockImplementation((_resource, encrypted) => encrypted ? '/resource.crypted' : '/resource.txt');
+		jest.spyOn(Resource, 'canDeleteLocalFile').mockResolvedValue(false);
+		const setLocalFileMissing = jest.spyOn(Resource, 'setLocalFileMissing').mockResolvedValue();
+		const remove = jest.fn().mockResolvedValue(undefined);
+		jest.spyOn(shim, 'fsDriver').mockReturnValue({ exists: jest.fn().mockResolvedValue(true), remove } as unknown as ReturnType<typeof shim.fsDriver>);
+
+		await expect(deleteResourceLocally(resource.id)).rejects.toThrow('uploaded by synchronisation');
 		expect(setLocalFileMissing).not.toHaveBeenCalled();
 		expect(remove).not.toHaveBeenCalled();
 	});
