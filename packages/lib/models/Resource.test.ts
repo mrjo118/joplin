@@ -261,4 +261,14 @@ describe('models/Resource', () => {
 		expect(extractFieldValues(result.items, field)).toEqual(expected);
 		expect(result.hasMore).toBe(expectedHasMore);
 	});
+
+	it('noteResources should optionally return only downloaded resources', async () => {
+		await setupNoteResourceFixtures();
+		await Resource.setLocalState(noteResourceFixtures[1].id, { fetch_status: Resource.FETCH_STATUS_IDLE });
+
+		const result = await Resource.noteResources({ downloadedOnly: true, limit: 10 });
+
+		expect(result.items.map(resource => resource.id)).not.toContain(noteResourceFixtures[1].id);
+		expect(result.items).toHaveLength(noteResourceFixtures.length - 1);
+	});
 });

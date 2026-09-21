@@ -19,6 +19,7 @@ import showResource from '../../commands/util/showResource';
 import { bytesToHuman } from '@joplin/utils/bytes';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { buildResourceMarkdownLink, deleteResourceLocally, nextSortState } from './resourceScreenUtils';
+import Checkbox from '../Checkbox';
 
 interface Props {
 	themeId: number;
@@ -51,6 +52,7 @@ const errorToMessage = (error: unknown) => {
 const ResourceScreenComponent: React.FC<Props> = props => {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+	const [downloadedOnly, setDownloadedOnly] = useState(false);
 	const [resources, setResources] = useState<ResourceEntity[]>([]);
 	const [sortField, setSortField] = useState<NoteResourceSortField>('title');
 	const [sortDirection, setSortDirection] = useState<NoteResourceSortDirection>('asc');
@@ -61,6 +63,7 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 	const [deletingResourceIds, setDeletingResourceIds] = useState<string[]>([]);
 	const [expandedResourceIds, setExpandedResourceIds] = useState<Record<string, boolean>>({});
 	const theme = themeStyle(props.themeId);
+	const canFilterByDownloaded = Setting.value('sync.resourceDownloadMode') !== 'always';
 	const isMountedRef = useRef(true);
 	const activeLoadIdRef = useRef(0);
 	const getNextLoadId = useCallback(() => {
@@ -106,6 +109,21 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 				borderColor: theme.dividerColor,
 				borderRadius: 4,
 				backgroundColor: theme.backgroundColor,
+			},
+			downloadedOnlyContainer: {
+				flexDirection: 'row',
+				alignItems: 'center',
+				marginLeft: theme.marginLeft,
+				marginRight: theme.marginRight,
+				marginBottom: theme.itemMarginBottom,
+			},
+			downloadedOnlyCheckbox: {
+				color: theme.color,
+				marginRight: 8,
+			},
+			downloadedOnlyLabel: {
+				color: theme.color,
+				fontSize: theme.fontSize,
 			},
 			listContent: {
 				paddingLeft: theme.marginLeft,
@@ -229,6 +247,7 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 		try {
 			const result = await Resource.noteResources({
 				searchQuery: debouncedSearchQuery,
+				downloadedOnly: canFilterByDownloaded && downloadedOnly,
 				sortField,
 				sortDirection,
 				limit: PAGE_SIZE,
@@ -253,7 +272,7 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 				setIsLoadingMore(false);
 			}
 		}
-	}, [canApplyLoadStateUpdate, debouncedSearchQuery, getNextLoadId, sortDirection, sortField]);
+	}, [canApplyLoadStateUpdate, canFilterByDownloaded, debouncedSearchQuery, downloadedOnly, getNextLoadId, sortDirection, sortField]);
 
 	useAsyncEffect(async (event) => {
 		await loadPage(0, () => event.cancelled);
@@ -439,6 +458,15 @@ const ResourceScreenComponent: React.FC<Props> = props => {
 				autoCapitalize='none'
 				containerStyle={styles.searchInputContainer}
 			/>
+			{canFilterByDownloaded ? <View style={styles.downloadedOnlyContainer}>
+				<Checkbox
+					checked={downloadedOnly}
+					onChange={setDownloadedOnly}
+					style={styles.downloadedOnlyCheckbox}
+					accessibilityLabel={_('Show downloaded attachments only')}
+				/>
+				<Text style={styles.downloadedOnlyLabel}>{_('Show downloaded attachments only')}</Text>
+			</View> : null}
 			<View style={styles.sortBar}>
 				<Button title={sortTypeLabel(sortField, sortDirection)} onPress={() => onToggleSorting(sortField)} />
 				<Button title={sortField === 'title' ? _('Sort by size') : _('Sort by title')} onPress={() => onToggleSorting(sortField === 'title' ? 'size' : 'title')} />

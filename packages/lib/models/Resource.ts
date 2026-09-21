@@ -44,6 +44,7 @@ export type NoteResourceSortDirection = 'asc' | 'desc';
 
 export interface NoteResourceQueryOptions {
 	searchQuery?: string;
+	downloadedOnly?: boolean;
 	sortField?: NoteResourceSortField;
 	sortDirection?: NoteResourceSortDirection;
 	limit?: number;
@@ -679,6 +680,10 @@ export default class Resource extends BaseItem {
 			const searchPattern = `%${options.searchQuery.trim().toLowerCase()}%`;
 			whereClauses.push('(LOWER(COALESCE(id, \'\')) LIKE ? OR LOWER(COALESCE(title, \'\')) LIKE ?)');
 			whereParams.push(searchPattern, searchPattern);
+		}
+		if (options.downloadedOnly) {
+			whereClauses.push('(id NOT IN (SELECT resource_id FROM resource_local_states) OR id IN (SELECT resource_id FROM resource_local_states WHERE fetch_status = ?))');
+			whereParams.push(Resource.FETCH_STATUS_DONE);
 		}
 
 		const orderBy = sortField === 'size' ? 'size' : 'LOWER(COALESCE(title, \'\'))';

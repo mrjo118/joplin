@@ -36,6 +36,7 @@ interface State {
 	sorting: ActiveSorting;
 	isLoading: boolean;
 	filter: string;
+	downloadedOnly: boolean;
 }
 
 interface ResourceTable {
@@ -177,6 +178,7 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 				order: 'name',
 			},
 			isLoading: false,
+			downloadedOnly: false,
 		};
 	}
 
@@ -197,14 +199,18 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 		this.reloadResourcesCounter ++;
 		const currentCounterValue = this.reloadResourcesCounter;
 
-		let searchOptions: Partial<LoadOptions> = {};
+		const whereClauses: string[] = [];
+		const whereParams: (string|number)[] = [];
 		if (this.state.filter) {
 			const search = `%${this.state.filter}%`;
-			searchOptions = {
-				where: 'id LIKE ? OR title LIKE ?',
-				whereParams: [search, search],
-			};
+			whereClauses.push('(id LIKE ? OR title LIKE ?)');
+			whereParams.push(search, search);
 		}
+		if (Setting.value('sync.resourceDownloadMode') !== 'always' && this.state.downloadedOnly) {
+			whereClauses.push('(id NOT IN (SELECT resource_id FROM resource_local_states) OR id IN (SELECT resource_id FROM resource_local_states WHERE fetch_status = ?))');
+			whereParams.push(Resource.FETCH_STATUS_DONE);
+		}
+		const searchOptions: Partial<LoadOptions> = whereClauses.length ? { where: whereClauses.join(' AND '), whereParams } : {};
 
 		const resources = await Resource.all({
 			order: [{
@@ -228,7 +234,7 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 	}
 
 	public componentDidUpdate(_prevProps: Props, prevState: State) {
-		if (prevState.sorting !== this.state.sorting || prevState.filter !== this.state.filter) {
+		if (prevState.sorting !== this.state.sorting || prevState.filter !== this.state.filter || prevState.downloadedOnly !== this.state.downloadedOnly) {
 			void this.reloadResources();
 		}
 	}
@@ -293,6 +299,10 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 		this.setState({ filter: updateEvent.target.value });
 	};
 
+	public onDownloadedOnlyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		this.setState({ downloadedOnly: event.target.checked });
+	};
+
 	public render() {
 		const style = this.props.style;
 		const theme = themeStyle(this.props.themeId);
@@ -317,7 +327,7 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 					<div style={{ ...theme.notificationBox, marginBottom: 10 }}>{
 						_('This is an advanced tool to show the attachments that are linked to your notes. Please be careful when deleting one of them as they cannot be restored afterwards.')
 					}</div>
-					<p style={{ float: 'left', paddingRight: 10 }}>
+					<div style={{ paddingRight: 10, marginBottom: 10 }}>
 						<input
 							style={theme.inputStyle}
 							type="search"
@@ -325,7 +335,11 @@ class ResourceScreenComponent extends React.Component<Props, State> {
 							onChange={this.onFilterUpdate}
 							placeholder={_('Search...')}
 						/>
-					</p>
+					</div>
+					{Setting.value('sync.resourceDownloadMode') !== 'always' && <label style={{ display: 'block', marginBottom: 10 }}>
+						<input type="checkbox" checked={this.state.downloadedOnly} onChange={this.onDownloadedOnlyChange} />
+						{' '}{_('Show downloaded attachments only')}
+					</label>}
 					{this.state.isLoading && <div>{_('Please wait...')}</div>}
 					{!this.state.isLoading && <div>
 						{!this.state.resources && <div>
