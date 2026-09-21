@@ -112,6 +112,16 @@ describe('models/Resource', () => {
 		expect(!ls.id).toBe(true);
 	}));
 
+	it('should atomically mark a local resource file as missing', async () => {
+		const resource = await Resource.save({ title: 'resource', mime: 'application/octet-stream' }, { isNew: true });
+
+		await Resource.setLocalFileMissing(resource.id, true);
+
+		expect((await Resource.load(resource.id)).encryption_blob_encrypted).toBe(1);
+		expect((await Resource.localState(resource.id)).fetch_status).toBe(Resource.FETCH_STATUS_IDLE);
+		expect((await Resource.needToBeFetched('auto')).map(item => item.id)).toContain(resource.id);
+	});
+
 	it('should resize the resource if the image is below the required dimensions', (async () => {
 		const folder1 = await Folder.save({ title: 'folder1' });
 		const note1 = await Note.save({ title: 'ma note', parent_id: folder1.id });

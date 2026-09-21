@@ -18,11 +18,7 @@ const deleteResourceLocally = async (resourceId: string) => {
 	if (await shim.fsDriver().exists(encryptedPath)) {
 		await shim.fsDriver().remove(encryptedPath);
 	}
-	await Resource.setLocalState(resource, {
-		fetch_status: Resource.FETCH_STATUS_IDLE,
-		fetch_error: '',
-	});
-	await Resource.markForDownload(resource.id);
+	await Resource.setLocalFileMissing(resource.id, await Resource.shouldBlobBeEncrypted(resource));
 };
 
 export default deleteResourceLocally;
