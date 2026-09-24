@@ -105,6 +105,7 @@ const DialogManager: React.FC<Props> = props => {
 		</DialogContext.Provider>
 		<Portal>
 			<Modal
+				testID='message-box-modal'
 				visible={!!dialogComponents.length}
 				scrollOverflow={true}
 				containerStyle={styles.modalContainer}

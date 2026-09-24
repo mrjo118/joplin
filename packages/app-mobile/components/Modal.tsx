@@ -27,6 +27,11 @@ export interface ModalElementProps {
 	onClose: OnClose|null;
 	onShow?: OnShow;
 	animationType?: 'fade'|'none';
+	testID?: string;
+	// When false, renders the modal in its surrounding Portal rather than in a
+	// separate native window. This is useful for modal-like views that need to
+	// be able to launch another native modal above themselves.
+	useNativeModal?: boolean;
 	wrapContent?: (view: React.ReactNode)=> React.ReactNode;
 
 	statusBarTranslucent?: boolean;
@@ -159,6 +164,7 @@ const ModalElement: React.FC<ModalElementProps> = ({
 	dismissButtonStyle,
 	onClose,
 	wrapContent,
+	useNativeModal = true,
 	...forwardedProps
 }) => {
 	const styles = useStyles(!!scrollOverflow, backgroundColor);
@@ -201,9 +207,19 @@ const ModalElement: React.FC<ModalElementProps> = ({
 	}
 
 	const extraScrollViewProps = (typeof scrollOverflow === 'object' ? scrollOverflow : {});
+	const modalContent = scrollOverflow ? (
+		<KeyboardAvoidingView style={styles.keyboardAvoidingView} enabled={true}>
+			<ScrollView
+				{...extraScrollViewProps}
+				style={[styles.modalScrollView, extraScrollViewProps.style]}
+				contentContainerStyle={[styles.modalScrollViewContent, extraScrollViewProps.contentContainerStyle]}
+			>{contentAndBackdrop}</ScrollView>
+		</KeyboardAvoidingView>
+	) : contentAndBackdrop;
+
 	const result = (
 		<FocusControl.ModalWrapper state={modalStatus}>
-			<ModalComponent
+			{useNativeModal ? <ModalComponent
 				// supportedOrientations: On iOS, this allows the dialog to be shown in non-portrait orientations.
 				supportedOrientations={['portrait', 'portrait-upside-down', 'landscape', 'landscape-left', 'landscape-right']}
 				animationType='fade'
@@ -217,16 +233,8 @@ const ModalElement: React.FC<ModalElementProps> = ({
 				onRequestClose={onClose}
 				{...forwardedProps}
 			>
-				{scrollOverflow ? (
-					<KeyboardAvoidingView style={styles.keyboardAvoidingView} enabled={true}>
-						<ScrollView
-							{...extraScrollViewProps}
-							style={[styles.modalScrollView, extraScrollViewProps.style]}
-							contentContainerStyle={[styles.modalScrollViewContent, extraScrollViewProps.contentContainerStyle]}
-						>{contentAndBackdrop}</ScrollView>
-					</KeyboardAvoidingView>
-				) : contentAndBackdrop}
-			</ModalComponent>
+				{modalContent}
+			</ModalComponent> : (forwardedProps.visible ? modalContent : null)}
 		</FocusControl.ModalWrapper>
 	);
 

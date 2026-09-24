@@ -39,6 +39,7 @@ const PluginDialogManager: React.FC<Props> = props => {
 				key={`${viewInfo.plugin.id}-${viewInfo.view.id}`}
 			>
 				<Modal
+					testID='plugin-dialog-modal'
 					visible={true}
 					onDismiss={() => dismissDialog(viewInfo)}
 				>
@@ -57,8 +58,10 @@ const PluginDialogManager: React.FC<Props> = props => {
 
 	return (
 		<>
+			<PluginPanelViewer inert={dialogs.length > 0}/>
+			{/* Paper portals are stacked in render order. Keep plugin dialogs after
+			    the panel so they receive input and accessibility focus above it. */}
 			{dialogs}
-			<PluginPanelViewer/>
 		</>
 	);
 };

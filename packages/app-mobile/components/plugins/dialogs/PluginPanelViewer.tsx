@@ -21,6 +21,7 @@ interface Props {
 	pluginHtmlContents: PluginHtmlContents;
 	pluginStates: PluginStates;
 	visible: boolean;
+	inert?: boolean;
 }
 
 
@@ -166,6 +167,13 @@ const PluginPanelViewer: React.FC<Props> = props => {
 				visible={props.visible}
 				size={DialogVariant.Large}
 				onDismiss={onClose}
+				// A native Modal creates a separate Android window. Plugin dialogs
+				// launched by this panel would then be trapped behind that window.
+				// Keep the panel in the Paper portal so later dialog portals and native
+				// message boxes can be presented above it.
+				useNativeModal={false}
+				testID='plugin-panel-modal'
+				inert={props.inert}
 			>
 				{renderTabContent()}
 				{renderTabSelector()}
