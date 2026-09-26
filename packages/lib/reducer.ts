@@ -1232,7 +1232,7 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 									windowDraft.selectedSmartFilterId = null;
 									windowDraft.selectedFolderId = displayParentId;
 									windowDraft.selectedFolderIds = [displayParentId];
-								} else if (action.changeSource === ItemChange.SOURCE_SYNC) {
+								} else if (action.changeSource === ItemChange.SOURCE_SYNC && displayParentId) {
 									// Sync can deliver a note before its parent folder. Select the destination
 									// by ID now; the folder list and focus refresh will populate it later.
 									windowDraft.notesParentType = 'Folder';

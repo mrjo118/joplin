@@ -1102,7 +1102,10 @@ describe('reducer', () => {
 		expect(state.backgroundWindows[secondaryWindowId].notes.map(n => n.id)).toEqual([notes[0].id, notes[1].id]);
 	});
 
-	test('moving a selected note without a parent should switch its background window to All Notes', async () => {
+	it.each([
+		['locally', ItemChange.SOURCE_UNSPECIFIED],
+		['during sync', ItemChange.SOURCE_SYNC],
+	])('moving a selected note without a parent %s should switch its background window to All Notes', async (_description, changeSource) => {
 		const folders = await createNTestFolders(1);
 		const notes = await createNTestNotes(1, folders[0]);
 		const secondaryWindowId = 'window1';
@@ -1110,7 +1113,7 @@ describe('reducer', () => {
 		state = createBackgroundWindow(state, secondaryWindowId, notes[0], notes);
 
 		const movedNote = { ...notes[0], parent_id: '' };
-		state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: movedNote });
+		state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: movedNote, changeSource });
 
 		const secondaryWindow = state.backgroundWindows[secondaryWindowId];
 		expect(secondaryWindow.notesParentType).toBe('SmartFilter');
