@@ -22,7 +22,7 @@ export interface SearchEntry {
 }
 import { getListRendererIds } from './services/noteList/renderers';
 import { ComplexTerm, ProcessResultsRow } from './services/search/SearchEngine';
-import { getDisplayParentId } from './services/trash';
+import { getDisplayParentId, getTrashFolderId } from './services/trash';
 import Logger from '@joplin/utils/Logger';
 import { SettingsRecord } from './models/settings/types';
 import { Toast, ToastType } from './services/plugins/api/types';
@@ -1199,24 +1199,39 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 						const n = newNotes[i];
 						if (n.id === modNote.id) {
 							const previousDisplayParentId = ('parent_id' in n) ? getDisplayParentId(n, draft.folders.find(f => f.id === n.parent_id)) : '';
-							// A trash operation changes the display parent without changing parent_id. In that
-							// case, keep showing the current folder and let the membership logic remove the note.
-							const noteDisplaysInRegularFolder = !modNote.deleted_time && !modNote.is_conflict;
-							const displayParentChanged = noteDisplaysInRegularFolder && (previousDisplayParentId !== modNote.parent_id || !!action.noteMovedToFolder);
+							const displayParentId = getDisplayParentId(modNote, draft.folders.find(f => f.id === modNote.parent_id));
+							const displayParentChanged = !modNote.is_conflict && (previousDisplayParentId !== displayParentId || !!action.noteMovedToFolder);
 							const shouldFollowMovedNote = isOnlySelectedInSecondaryWindow && windowDraft.notesParentType === 'Folder' && displayParentChanged;
 							if (shouldFollowMovedNote) {
-								newNotes[i] = { ...newNotes[i], ...modNote };
-								const parentFolder = draft.folders.find(f => f.id === modNote.parent_id);
+								const parentFolder = draft.folders.find(f => f.id === displayParentId);
+								const isVirtualFolder = displayParentId === getTrashFolderId();
 								if (parentFolder) {
 									windowDraft.notesParentType = 'Folder';
-									windowDraft.selectedFolderId = modNote.parent_id;
-									windowDraft.selectedFolderIds = [modNote.parent_id];
-								} else {
+									windowDraft.selectedSmartFilterId = null;
+									windowDraft.selectedFolderId = displayParentId;
+									windowDraft.selectedFolderIds = [displayParentId];
+								} else if (isVirtualFolder) {
+									windowDraft.notesParentType = 'Folder';
+									windowDraft.selectedSmartFilterId = null;
+									windowDraft.selectedFolderId = displayParentId;
+									windowDraft.selectedFolderIds = [displayParentId];
+								} else if (action.changeSource !== ItemChange.SOURCE_SYNC) {
 									windowDraft.notesParentType = 'SmartFilter';
 									windowDraft.selectedSmartFilterId = ALL_NOTES_FILTER_ID;
 									windowDraft.selectedFolderId = null;
 									windowDraft.selectedFolderIds = [];
+								} else {
+									// Sync can deliver a note before its parent folder. Keep the selected note
+									// available without silently changing the window to All Notes.
+									newNotes[i] = { ...newNotes[i], ...modNote };
+									found = true;
+									break;
 								}
+
+								// The previous list belongs to the old folder. Until WINDOW_FOCUS refreshes
+								// the destination, the only item known to belong to the new source is this note.
+								newNotes.splice(0, newNotes.length, { ...newNotes[i], ...modNote });
+								windowDraft.notesSource = '';
 							} else if (n.is_conflict && !modNote.is_conflict) {
 								// Note was a conflict but was moved outside of
 								// the conflict folder

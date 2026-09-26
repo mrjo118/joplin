@@ -567,6 +567,9 @@ export default class BaseApplication {
 		// Refreshing notes after switching windows helps ensure that the selected note/tags/other state
 		// is correct for the current window.
 		if (action.type === 'WINDOW_FOCUS' && action.lastWindowId !== action.windowId) {
+			Setting.setValue('activeFolderId', newState.selectedFolderId);
+			Setting.setValue('notesParent', serializeNotesParent(getNotesParent(newState)));
+			this.currentFolder_ = newState.selectedFolderId ? await Folder.load(newState.selectedFolderId) : null;
 			refreshNotes = true;
 			refreshNotesUseSelectedNoteId = true;
 		}
