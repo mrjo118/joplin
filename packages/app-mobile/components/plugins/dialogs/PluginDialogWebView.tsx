@@ -44,7 +44,7 @@ const useStyles = (
 				display: 'flex',
 			},
 			webViewContainer: {
-				flexGrow: 1,
+				flexGrow: 0,
 				flexShrink: 1,
 
 				maxWidth,
