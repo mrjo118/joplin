@@ -1183,6 +1183,53 @@ describe('reducer', () => {
 		expect(secondaryWindow.notes).toContainEqual(movedNote);
 	});
 
+	it.each([
+		['decrypted', false],
+		['encrypted', true],
+	])('sync moving a conflict to another folder (%s) should keep its background editor enabled', async (_description, encrypted) => {
+		const folders = await createNTestFolders(2);
+		const notes = await createNTestNotes(1, folders[0]);
+		const conflictNote = { ...notes[0], is_conflict: 1 };
+		const secondaryWindowId = 'window1';
+		let state = initTestState(folders, 0, notes, [0]);
+		state = createBackgroundWindow(state, secondaryWindowId, conflictNote, [conflictNote]);
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: secondaryWindowId });
+		state = reducer(state, { type: 'FOLDER_SELECT', id: getConflictFolderId() });
+		state = reducer(state, { type: 'NOTE_UPDATE_ALL', notes: [conflictNote], notesSource: 'test' });
+		state = reducer(state, { type: 'NOTE_SELECT', ids: [conflictNote.id] });
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: defaultWindowId });
+
+		const movedNote = {
+			...conflictNote,
+			parent_id: folders[1].id,
+			is_conflict: 0,
+			encryption_applied: encrypted ? 1 : 0,
+		};
+		state = reducer(state, {
+			type: 'NOTE_UPDATE_ONE',
+			note: movedNote,
+			changeSource: ItemChange.SOURCE_SYNC,
+		});
+
+		let secondaryWindow = state.backgroundWindows[secondaryWindowId];
+		expect(secondaryWindow.selectedFolderId).toBe(folders[1].id);
+		expect(secondaryWindow.selectedNoteIds).toEqual([movedNote.id]);
+		expect(secondaryWindow.notes).toEqual([movedNote]);
+
+		if (encrypted) {
+			const decryptedMovedNote = { ...movedNote, encryption_applied: 0 };
+			state = reducer(state, {
+				type: 'NOTE_UPDATE_ONE',
+				note: decryptedMovedNote,
+				changeSource: ItemChange.SOURCE_DECRYPTION,
+			});
+			secondaryWindow = state.backgroundWindows[secondaryWindowId];
+			expect(secondaryWindow.selectedFolderId).toBe(folders[1].id);
+			expect(secondaryWindow.selectedNoteIds).toEqual([decryptedMovedNote.id]);
+			expect(secondaryWindow.notes).toEqual([decryptedMovedNote]);
+		}
+	});
+
 	test('trashing a selected note should keep it open in the trash in its background window', async () => {
 		const folders = await createNTestFolders(1);
 		const notes = await createNTestNotes(3, folders[0]);
