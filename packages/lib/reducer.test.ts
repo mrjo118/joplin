@@ -1250,6 +1250,31 @@ describe('reducer', () => {
 		expect(secondaryWindow.notes).toEqual([restoredConflict]);
 	});
 
+	test('decrypting a deleted conflict should keep it in the Trash note list', async () => {
+		const folders = await createNTestFolders(1);
+		const notes = await createNTestNotes(1, folders[0]);
+		const encryptedConflict = {
+			...notes[0],
+			deleted_time: Date.now(),
+			encryption_applied: 1,
+			// is_conflict is encrypted and is not known until the note is decrypted.
+			is_conflict: 0,
+		};
+		let state = initTestState(folders, 0, notes, [0]);
+		state = reducer(state, { type: 'FOLDER_SELECT', id: getTrashFolderId() });
+		state = reducer(state, { type: 'NOTE_UPDATE_ALL', notes: [encryptedConflict], notesSource: 'test' });
+
+		const decryptedConflict = { ...encryptedConflict, encryption_applied: 0, is_conflict: 1 };
+		state = reducer(state, {
+			type: 'NOTE_UPDATE_ONE',
+			note: decryptedConflict,
+			changeSource: ItemChange.SOURCE_DECRYPTION,
+		});
+
+		expect(state.selectedFolderId).toBe(getTrashFolderId());
+		expect(state.notes).toEqual([decryptedConflict]);
+	});
+
 	it.each([
 		['without a noteId', undefined, true],
 		['for the selected note', 0, true],

@@ -1190,6 +1190,12 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 					};
 
 					const noteIsInCurrentView = function(note: NoteEntity, folderId: string) {
+						// Deleted conflicts belong to Trash. This check needs to happen before the
+						// conflict check because is_conflict is only available after decryption.
+						if (note.deleted_time) {
+							const noteDisplayParentId = getDisplayParentId(note, draft.folders.find(f => f.id === note.parent_id));
+							return folderId === noteDisplayParentId;
+						}
 						if (note.is_conflict) return isViewingConflictFolder;
 						if (isViewingAllNotes) return true;
 						const noteDisplayParentId = getDisplayParentId(note, draft.folders.find(f => f.id === note.parent_id));
