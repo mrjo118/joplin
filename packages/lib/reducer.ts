@@ -1210,8 +1210,11 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 						const n = newNotes[i];
 						if (n.id === modNote.id) {
 							const previousDisplayParentId = ('parent_id' in n) ? noteDisplayParentId(n) : '';
-							const displayParentId = noteDisplayParentId(modNote);
-							const conflictTrashStateChanged = !!n.is_conflict && !!modNote.is_conflict && !!n.deleted_time !== !!modNote.deleted_time;
+							// is_conflict is encrypted. During sync, retain the conflict identity from
+							// the existing deleted note until the restored placeholder is decrypted.
+							const isEncryptedRestoredConflict = !!n.is_conflict && !!n.deleted_time && !modNote.deleted_time && !!modNote.encryption_applied;
+							const displayParentId = isEncryptedRestoredConflict ? Folder.conflictFolderId() : noteDisplayParentId(modNote);
+							const conflictTrashStateChanged = !!n.is_conflict && (!!modNote.is_conflict || isEncryptedRestoredConflict) && !!n.deleted_time !== !!modNote.deleted_time;
 							const regularNoteMoved = !n.is_conflict && !modNote.is_conflict && previousDisplayParentId !== displayParentId;
 							const displayParentChanged = !!action.noteMovedToFolder || conflictTrashStateChanged || regularNoteMoved;
 							const shouldFollowMovedNote = isOnlySelectedInSecondaryWindow && windowDraft.notesParentType === 'Folder' && displayParentChanged;

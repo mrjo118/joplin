@@ -1250,6 +1250,50 @@ describe('reducer', () => {
 		expect(secondaryWindow.notes).toEqual([restoredConflict]);
 	});
 
+	test('restoring an encrypted deleted conflict during sync should keep its background editor enabled after decryption', async () => {
+		const folders = await createNTestFolders(1);
+		const notes = await createNTestNotes(1, folders[0]);
+		const deletedConflict = { ...notes[0], is_conflict: 1, deleted_time: Date.now() };
+		const secondaryWindowId = 'window1';
+		let state = initTestState(folders, 0, notes, [0]);
+		state = createBackgroundWindow(state, secondaryWindowId, deletedConflict, [deletedConflict]);
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: secondaryWindowId });
+		state = reducer(state, { type: 'FOLDER_SELECT', id: getTrashFolderId() });
+		state = reducer(state, { type: 'NOTE_UPDATE_ALL', notes: [deletedConflict], notesSource: 'test' });
+		state = reducer(state, { type: 'NOTE_SELECT', ids: [deletedConflict.id] });
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: defaultWindowId });
+
+		const encryptedRestoredConflict = {
+			...deletedConflict,
+			deleted_time: 0,
+			encryption_applied: 1,
+			// The encrypted sync representation does not expose is_conflict.
+			is_conflict: 0,
+		};
+		state = reducer(state, {
+			type: 'NOTE_UPDATE_ONE',
+			note: encryptedRestoredConflict,
+			changeSource: ItemChange.SOURCE_SYNC,
+		});
+
+		let secondaryWindow = state.backgroundWindows[secondaryWindowId];
+		expect(secondaryWindow.selectedFolderId).toBe(getConflictFolderId());
+		expect(secondaryWindow.selectedNoteIds).toEqual([deletedConflict.id]);
+		expect(secondaryWindow.notes).toEqual([encryptedRestoredConflict]);
+
+		const decryptedRestoredConflict = { ...encryptedRestoredConflict, encryption_applied: 0, is_conflict: 1 };
+		state = reducer(state, {
+			type: 'NOTE_UPDATE_ONE',
+			note: decryptedRestoredConflict,
+			changeSource: ItemChange.SOURCE_DECRYPTION,
+		});
+
+		secondaryWindow = state.backgroundWindows[secondaryWindowId];
+		expect(secondaryWindow.selectedFolderId).toBe(getConflictFolderId());
+		expect(secondaryWindow.selectedNoteIds).toEqual([decryptedRestoredConflict.id]);
+		expect(secondaryWindow.notes).toEqual([decryptedRestoredConflict]);
+	});
+
 	test('decrypting a deleted conflict should keep it in the Trash note list', async () => {
 		const folders = await createNTestFolders(1);
 		const notes = await createNTestNotes(1, folders[0]);
