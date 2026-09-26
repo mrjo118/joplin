@@ -98,7 +98,7 @@
   },
   "devDependencies": {
     "@babel/core": "7.26.0",
-    "@babel/plugin-transform-export-namespace-from": "7.27.1",
+    "@babel/plugin-transform-export-namespace-from": "7.29.7",
     "@babel/preset-env": "7.25.3",
     "@babel/runtime": "7.25.0",
     "@joplin/tools": "~3.7",
@@ -142,7 +142,7 @@
     "sqlite3": "5.1.6",
     "timers-browserify": "2.0.12",
     "ts-jest": "29.4.11",
-    "ts-loader": "9.5.4",
+    "ts-loader": "9.5.7",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
     "url-loader": "4.1.1",
