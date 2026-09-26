@@ -1215,9 +1215,9 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 							const isEncryptedRestoredConflict = !!n.is_conflict && !!n.deleted_time && !modNote.deleted_time && !!modNote.encryption_applied;
 							const displayParentId = isEncryptedRestoredConflict ? Folder.conflictFolderId() : noteDisplayParentId(modNote);
 							const conflictTrashStateChanged = !!n.is_conflict && (!!modNote.is_conflict || isEncryptedRestoredConflict) && !!n.deleted_time !== !!modNote.deleted_time;
-							const conflictMovedToAnotherFolder = !!n.is_conflict && !modNote.is_conflict && n.parent_id !== modNote.parent_id;
+							const conflictBecameRegularNote = !!n.is_conflict && !modNote.is_conflict;
 							const regularNoteMoved = !n.is_conflict && !modNote.is_conflict && previousDisplayParentId !== displayParentId;
-							const displayParentChanged = !!action.noteMovedToFolder || conflictTrashStateChanged || conflictMovedToAnotherFolder || regularNoteMoved;
+							const displayParentChanged = !!action.noteMovedToFolder || conflictTrashStateChanged || conflictBecameRegularNote || regularNoteMoved;
 							const shouldFollowMovedNote = isOnlySelectedInSecondaryWindow && windowDraft.notesParentType === 'Folder' && displayParentChanged;
 							if (shouldFollowMovedNote) {
 								const parentFolder = draft.folders.find(f => f.id === displayParentId);

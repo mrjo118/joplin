@@ -1142,7 +1142,11 @@ describe('reducer', () => {
 		expect(secondaryWindow.selectedNoteIds).toEqual([movedNote.id]);
 	});
 
-	test('resolving a conflict should not switch a background window out of the conflict folder', async () => {
+	it.each([
+		['locally', ItemChange.SOURCE_UNSPECIFIED, false],
+		['during sync', ItemChange.SOURCE_SYNC, false],
+		['during encrypted sync', ItemChange.SOURCE_SYNC, true],
+	])('resolving a conflict %s should keep it open in its original folder in a background window', async (_description, changeSource, encrypted) => {
 		const folders = await createNTestFolders(1);
 		const notes = await createNTestNotes(1, folders[0]);
 		const conflictNote = { ...notes[0], is_conflict: 1 };
@@ -1155,10 +1159,17 @@ describe('reducer', () => {
 		state = reducer(state, { type: 'NOTE_SELECT', ids: [conflictNote.id] });
 		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: defaultWindowId });
 
-		state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: { ...conflictNote, is_conflict: 0 } });
+		let resolvedNote = { ...conflictNote, is_conflict: 0, encryption_applied: encrypted ? 1 : 0 };
+		state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: resolvedNote, changeSource });
+		if (encrypted) {
+			resolvedNote = { ...resolvedNote, encryption_applied: 0 };
+			state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: resolvedNote, changeSource: ItemChange.SOURCE_DECRYPTION });
+		}
 
-		expect(state.backgroundWindows[secondaryWindowId].selectedFolderId).toBe(getConflictFolderId());
-		expect(state.backgroundWindows[secondaryWindowId].notes).toEqual([]);
+		expect(state.backgroundWindows[secondaryWindowId].selectedFolderId).toBe(folders[0].id);
+		expect(state.backgroundWindows[secondaryWindowId].selectedFolderIds).toEqual([folders[0].id]);
+		expect(state.backgroundWindows[secondaryWindowId].selectedNoteIds).toEqual([resolvedNote.id]);
+		expect(state.backgroundWindows[secondaryWindowId].notes).toEqual([resolvedNote]);
 	});
 
 	test('moving a conflict to another folder should keep it open in its background window', async () => {
