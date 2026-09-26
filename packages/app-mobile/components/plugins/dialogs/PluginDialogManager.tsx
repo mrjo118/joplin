@@ -2,13 +2,11 @@ import * as React from 'react';
 import { ReactElement } from 'react';
 import { PluginHtmlContents, PluginStates, ViewInfo } from '@joplin/lib/services/plugins/reducer';
 import PluginDialogWebView from './PluginDialogWebView';
-import { Modal, Portal } from 'react-native-paper';
+import Modal from '../../Modal';
 import PluginService from '@joplin/lib/services/plugins/PluginService';
 import WebviewController, { ContainerType } from '@joplin/lib/services/plugins/WebviewController';
 import useViewInfos from './hooks/useViewInfos';
 import PluginPanelViewer from './PluginPanelViewer';
-import FocusControl from '../../accessibility/FocusControl/FocusControl';
-import { ModalState } from '../../accessibility/FocusControl/types';
 
 interface Props {
 	themeId: number;
@@ -35,30 +33,25 @@ const PluginDialogManager: React.FC<Props> = props => {
 		}
 
 		dialogs.push(
-			<Portal
+			<Modal
 				key={`${viewInfo.plugin.id}-${viewInfo.view.id}`}
+				visible={true}
+				onClose={() => dismissDialog(viewInfo)}
 			>
-				<Modal
-					visible={true}
-					onDismiss={() => dismissDialog(viewInfo)}
-				>
-					<FocusControl.ModalWrapper state={ModalState.Open}>
-						<PluginDialogWebView
-							viewInfo={viewInfo}
-							themeId={props.themeId}
-							pluginStates={props.pluginStates}
-							pluginHtmlContents={props.pluginHtmlContents}
-						/>
-					</FocusControl.ModalWrapper>
-				</Modal>
-			</Portal>,
+				<PluginDialogWebView
+					viewInfo={viewInfo}
+					themeId={props.themeId}
+					pluginStates={props.pluginStates}
+					pluginHtmlContents={props.pluginHtmlContents}
+				/>
+			</Modal>,
 		);
 	}
 
 	return (
 		<>
-			{dialogs}
 			<PluginPanelViewer/>
+			{dialogs}
 		</>
 	);
 };
