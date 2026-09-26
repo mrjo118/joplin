@@ -1183,6 +1183,11 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 					const isViewingAllNotes = (windowDraft.notesParentType === 'SmartFilter' && windowDraft.selectedSmartFilterId === ALL_NOTES_FILTER_ID);
 					const isViewingConflictFolder = windowDraft.notesParentType === 'Folder' && windowDraft.selectedFolderId === Folder.conflictFolderId();
 					const isOnlySelectedInSecondaryWindow = isSecondaryWindow && windowDraft.selectedNoteIds.length === 1 && windowDraft.selectedNoteIds[0] === modNote.id;
+					const noteDisplayParentId = (note: NoteEntity) => {
+						if (note.deleted_time) return getDisplayParentId(note, draft.folders.find(f => f.id === note.parent_id));
+						if (note.is_conflict) return Folder.conflictFolderId();
+						return getDisplayParentId(note, draft.folders.find(f => f.id === note.parent_id));
+					};
 
 					const noteIsInCurrentView = function(note: NoteEntity, folderId: string) {
 						if (note.is_conflict) return isViewingConflictFolder;
@@ -1198,13 +1203,15 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 					for (let i = 0; i < newNotes.length; i++) {
 						const n = newNotes[i];
 						if (n.id === modNote.id) {
-							const previousDisplayParentId = ('parent_id' in n) ? getDisplayParentId(n, draft.folders.find(f => f.id === n.parent_id)) : '';
-							const displayParentId = getDisplayParentId(modNote, draft.folders.find(f => f.id === modNote.parent_id));
-							const displayParentChanged = !modNote.is_conflict && (previousDisplayParentId !== displayParentId || !!action.noteMovedToFolder);
+							const previousDisplayParentId = ('parent_id' in n) ? noteDisplayParentId(n) : '';
+							const displayParentId = noteDisplayParentId(modNote);
+							const conflictTrashStateChanged = !!n.is_conflict && !!modNote.is_conflict && !!n.deleted_time !== !!modNote.deleted_time;
+							const regularNoteMoved = !n.is_conflict && !modNote.is_conflict && previousDisplayParentId !== displayParentId;
+							const displayParentChanged = !!action.noteMovedToFolder || conflictTrashStateChanged || regularNoteMoved;
 							const shouldFollowMovedNote = isOnlySelectedInSecondaryWindow && windowDraft.notesParentType === 'Folder' && displayParentChanged;
 							if (shouldFollowMovedNote) {
 								const parentFolder = draft.folders.find(f => f.id === displayParentId);
-								const isVirtualFolder = displayParentId === getTrashFolderId();
+								const isVirtualFolder = displayParentId === getTrashFolderId() || displayParentId === Folder.conflictFolderId();
 								if (parentFolder) {
 									windowDraft.notesParentType = 'Folder';
 									windowDraft.selectedSmartFilterId = null;

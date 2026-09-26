@@ -1225,6 +1225,32 @@ describe('reducer', () => {
 	});
 
 	it.each([
+		['locally', ItemChange.SOURCE_UNSPECIFIED],
+		['during sync', ItemChange.SOURCE_SYNC],
+	])('restoring a deleted conflict %s should keep it open in Conflicts in its background window', async (_description, changeSource) => {
+		const folders = await createNTestFolders(1);
+		const notes = await createNTestNotes(1, folders[0]);
+		const deletedConflict = { ...notes[0], is_conflict: 1, deleted_time: Date.now() };
+		const secondaryWindowId = 'window1';
+		let state = initTestState(folders, 0, notes, [0]);
+		state = createBackgroundWindow(state, secondaryWindowId, deletedConflict, [deletedConflict]);
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: secondaryWindowId });
+		state = reducer(state, { type: 'FOLDER_SELECT', id: getTrashFolderId() });
+		state = reducer(state, { type: 'NOTE_UPDATE_ALL', notes: [deletedConflict], notesSource: 'test' });
+		state = reducer(state, { type: 'NOTE_SELECT', ids: [deletedConflict.id] });
+		state = reducer(state, { type: 'WINDOW_FOCUS', windowId: defaultWindowId });
+
+		const restoredConflict = { ...deletedConflict, deleted_time: 0 };
+		state = reducer(state, { type: 'NOTE_UPDATE_ONE', note: restoredConflict, changeSource });
+
+		const secondaryWindow = state.backgroundWindows[secondaryWindowId];
+		expect(secondaryWindow.selectedFolderId).toBe(getConflictFolderId());
+		expect(secondaryWindow.selectedFolderIds).toEqual([getConflictFolderId()]);
+		expect(secondaryWindow.selectedNoteIds).toEqual([restoredConflict.id]);
+		expect(secondaryWindow.notes).toEqual([restoredConflict]);
+	});
+
+	it.each([
 		['without a noteId', undefined, true],
 		['for the selected note', 0, true],
 		['for a different note', 1, false],
