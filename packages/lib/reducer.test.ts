@@ -1120,7 +1120,7 @@ describe('reducer', () => {
 		expect(secondaryWindow.notes).toEqual([movedNote]);
 	});
 
-	test('moving a selected note during sync should not fall back to All Notes if its folder is not loaded', async () => {
+	test('moving a selected note during sync should follow its folder ID even if the folder is not loaded', async () => {
 		const folders = await createNTestFolders(1);
 		const notes = await createNTestNotes(1, folders[0]);
 		const secondaryWindowId = 'window1';
@@ -1136,10 +1136,12 @@ describe('reducer', () => {
 
 		const secondaryWindow = state.backgroundWindows[secondaryWindowId];
 		expect(secondaryWindow.notesParentType).toBe('Folder');
-		expect(secondaryWindow.selectedFolderId).toBe(folders[0].id);
+		expect(secondaryWindow.selectedFolderId).toBe(movedNote.parent_id);
+		expect(secondaryWindow.selectedFolderIds).toEqual([movedNote.parent_id]);
 		expect(secondaryWindow.selectedSmartFilterId).toBeNull();
 		expect(secondaryWindow.notes).toEqual([movedNote]);
 		expect(secondaryWindow.selectedNoteIds).toEqual([movedNote.id]);
+		expect(secondaryWindow.notesSource).toBe('');
 	});
 
 	it.each([

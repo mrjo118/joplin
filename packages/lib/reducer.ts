@@ -1232,17 +1232,18 @@ const reducer = produce((draft: Draft<State> = defaultState, action: any) => {
 									windowDraft.selectedSmartFilterId = null;
 									windowDraft.selectedFolderId = displayParentId;
 									windowDraft.selectedFolderIds = [displayParentId];
-								} else if (action.changeSource !== ItemChange.SOURCE_SYNC) {
+								} else if (action.changeSource === ItemChange.SOURCE_SYNC) {
+									// Sync can deliver a note before its parent folder. Select the destination
+									// by ID now; the folder list and focus refresh will populate it later.
+									windowDraft.notesParentType = 'Folder';
+									windowDraft.selectedSmartFilterId = null;
+									windowDraft.selectedFolderId = displayParentId;
+									windowDraft.selectedFolderIds = [displayParentId];
+								} else {
 									windowDraft.notesParentType = 'SmartFilter';
 									windowDraft.selectedSmartFilterId = ALL_NOTES_FILTER_ID;
 									windowDraft.selectedFolderId = null;
 									windowDraft.selectedFolderIds = [];
-								} else {
-									// Sync can deliver a note before its parent folder. Keep the selected note
-									// available without silently changing the window to All Notes.
-									newNotes[i] = { ...newNotes[i], ...modNote };
-									found = true;
-									break;
 								}
 
 								// The previous list belongs to the old folder. Until WINDOW_FOCUS refreshes
