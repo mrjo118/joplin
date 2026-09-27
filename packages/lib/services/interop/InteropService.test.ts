@@ -567,6 +567,25 @@ describe('InteropService', () => {
 		expect(result.warnings.length).toBe(0);
 	}));
 
+	it('should count resources that have not been downloaded', (async () => {
+		const folder = await Folder.save({ title: 'folder' });
+		const resource = await Resource.save({ title: 'attachment.txt', filename: 'attachment.txt', mime: 'text/plain' });
+		await Note.save({
+			title: 'note',
+			parent_id: folder.id,
+			body: `[attachment](:/${resource.id})`,
+		});
+
+		const service = InteropService.instance();
+		const { result: exportModuleResult, module } = memoryExportModule();
+		service.registerModule(module);
+
+		const result = await service.export({ format: ExportModuleOutputFormat.Memory });
+
+		expect(result.notDownloadedResourceCount).toBe(1);
+		expect(exportModuleResult.resources).toHaveLength(1);
+	}));
+
 	it('should not export certain note properties', (async () => {
 		const folder = await Folder.save({ title: 'folder', share_id: 'some_id', is_shared: 1 });
 		let note = await Note.save({ title: 'note', is_shared: 1, share_id: 'someid', parent_id: folder.id });

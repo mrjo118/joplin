@@ -233,6 +233,9 @@ export default class InteropServiceHelper {
 			const result = await service.export(exportOptions);
 			// eslint-disable-next-line no-console
 			console.info('Export result: ', result);
+			if (result.notDownloadedResourceCount) {
+				await bridge().showMessageBox(_('Warning: Some attachments were not exported, because they are not downloaded on your device'));
+			}
 		} catch (error) {
 			console.error(error);
 			bridge().showErrorMessageBox(_('Could not export notes: %s', error.message));

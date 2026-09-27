@@ -369,7 +369,7 @@ export default class InteropService {
 		const exportPath = options.path ? options.path : null;
 		let sourceFolderIds = options.sourceFolderIds ? options.sourceFolderIds : [];
 		const sourceNoteIds = options.sourceNoteIds ? options.sourceNoteIds : [];
-		const result: ImportExportResult = { warnings: [] };
+		const result: ImportExportResult = { warnings: [], notDownloadedResourceCount: 0 };
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any -- itemsToExport is consumed by exporter.prepareForProcessingItemType (typed BaseItemEntity[]); the actual values are { type, itemOrId } structurally — narrowing here would force changing the exporter signature
 		const itemsToExport: any[] = [];
 
@@ -494,6 +494,9 @@ export default class InteropService {
 				try {
 					if (itemType === BaseModel.TYPE_RESOURCE) {
 						const resourcePath = Resource.fullPath(item);
+						if (!await shim.fsDriver().exists(resourcePath)) {
+							result.notDownloadedResourceCount = (result.notDownloadedResourceCount ?? 0) + 1;
+						}
 						context.resourcePaths[item.id] = resourcePath;
 						exporter.updateContext(context);
 						await exporter.processResource(item, resourcePath);
