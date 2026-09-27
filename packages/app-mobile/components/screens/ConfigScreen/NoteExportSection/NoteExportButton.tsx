@@ -60,7 +60,12 @@ const runExportTask = async (
 
 	logger.info('Export complete');
 	if (status.notDownloadedResourceCount) {
-		Alert.alert(_('Warning: Some attachments were not exported, because they are not downloaded on your device'));
+		Alert.alert(
+			_('Warning'),
+			_('%d attachments were not exported, because they are not downloaded on your device', status.notDownloadedResourceCount),
+			[{ text: _('OK') }],
+			{ cancelable: false },
+		);
 	}
 
 	return { warnings: status.warnings, success: true };

@@ -65,7 +65,10 @@ describe('NoteExportButton', () => {
 		await act(() => fireEvent.press(view.getByText(_('Export all notes as JEX'))));
 
 		await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
-			_('Warning: Some attachments were not exported, because they are not downloaded on your device'),
+			_('Warning'),
+			_('%d attachments were not exported, because they are not downloaded on your device', 1),
+			[{ text: _('OK') }],
+			{ cancelable: false },
 		));
 
 		view.unmount();

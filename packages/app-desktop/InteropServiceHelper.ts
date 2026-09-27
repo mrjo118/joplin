@@ -234,7 +234,10 @@ export default class InteropServiceHelper {
 			// eslint-disable-next-line no-console
 			console.info('Export result: ', result);
 			if (result.notDownloadedResourceCount) {
-				await bridge().showMessageBox(_('Warning: Some attachments were not exported, because they are not downloaded on your device'));
+				await bridge().showMessageBox(
+					_('%d attachments were not exported, because they are not downloaded on your device', result.notDownloadedResourceCount),
+					{ title: _('Warning'), buttons: [_('OK')], cancelId: 0 },
+				);
 			}
 		} catch (error) {
 			console.error(error);
