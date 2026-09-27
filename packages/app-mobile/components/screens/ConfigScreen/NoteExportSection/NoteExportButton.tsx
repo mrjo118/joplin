@@ -10,7 +10,6 @@ import { ConfigScreenStyles } from '../configScreenStyles';
 import makeImportExportCacheDirectory from './utils/makeImportExportCacheDirectory';
 import TaskButton, { OnProgressCallback, SetAfterCompleteListenerCallback, TaskStatus } from './TaskButton';
 import shareFile from '../../../../utils/shareFile';
-import { Alert } from 'react-native';
 
 const logger = Logger.create('NoteExportButton');
 
@@ -59,14 +58,6 @@ const runExportTask = async (
 	onProgress(1);
 
 	logger.info('Export complete');
-	if (status.notDownloadedResourceCount) {
-		Alert.alert(
-			_('Warning'),
-			_('%d attachments were not exported, because they are not downloaded on your device', status.notDownloadedResourceCount),
-			[{ text: _('OK') }],
-			{ cancelable: false },
-		);
-	}
 
 	return { warnings: status.warnings, success: true };
 };
