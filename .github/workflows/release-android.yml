@@ -34,6 +34,7 @@ jobs:
         run:  yarn install
         env:
           SKIP_ONENOTE_CONVERTER_BUILD: 1
+          YARN_NPM_MINIMAL_AGE_GATE: '0'
       
       - name: Free disk space
         run: |

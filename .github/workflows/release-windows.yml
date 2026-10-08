@@ -25,6 +25,7 @@ jobs:
         run: yarn install --immutable
         env:
           SKIP_ONENOTE_CONVERTER_BUILD: 1
+          YARN_NPM_MINIMAL_AGE_GATE: '0'
 
       - name: Build Windows portable application
         working-directory: packages/app-desktop
