@@ -93,11 +93,21 @@ rules.heading = {
 // Joplin format support
 // ==============================
 
+function wrapWithColorStyles(content, node) {
+  const styles = ['color', 'background-color'].map(name => {
+    const value = getStyleProp(node, name);
+    return value ? `${name}: ${htmlentities(value)};` : '';
+  }).filter(style => !!style);
+
+  return styles.length ? `<span style="${styles.join(' ')}">${content}</span>` : content;
+}
+
 rules.highlight = {
   filter: 'mark',
 
   replacement: function (content, node, options) {
-    return '==' + content + '=='
+    const highlightedContent = '==' + content + '==';
+    return options.preserveColorStyles ? wrapWithColorStyles(highlightedContent, node) : highlightedContent;
   }
 }
 
@@ -144,16 +154,18 @@ rules.subscript = {
   }
 }
 
-// Handles foreground color changes as created by the rich text editor.
+// Handles foreground and background color changes as created by the rich text editor.
 // We intentionally don't handle the general style="color: colorhere" case as
 // this may leave unwanted formatting when saving websites as markdown.
-rules.foregroundColor = {
+rules.color = {
   filter: function (node, options) {
-    return options.preserveColorStyles && node.nodeName === 'SPAN' && getStyleProp(node, 'color');
+    return options.preserveColorStyles && node.nodeName === 'SPAN' && (
+      getStyleProp(node, 'color') || getStyleProp(node, 'background-color')
+    );
   },
 
   replacement: function (content, node, options) {
-    return `<span style="color: ${htmlentities(getStyleProp(node, 'color'))};">${content}</span>`;
+    return wrapWithColorStyles(content, node);
   },
 }
 

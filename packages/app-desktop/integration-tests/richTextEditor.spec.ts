@@ -79,6 +79,34 @@ test.describe('richTextEditor', () => {
 		expect(finalCodeMirrorContent).toContain(`:/${resourceId}`);
 	});
 
+	test('should preserve foreground and background colours on highlighted text', async ({ mainWindow }) => {
+		const mainScreen = await new MainScreen(mainWindow).setup();
+		await mainScreen.createNewNote('Testing highlighted text colours');
+		const editor = mainScreen.noteEditor;
+
+		const markdownEditor = await editor.showMarkdownEditor();
+		await markdownEditor.typeText([
+			'<mark style="color: red; background-color: yellow;">Highlighted</mark>',
+			'',
+			'Edit this line',
+		].join('\n'));
+
+		const richTextEditor = await editor.showRichTextEditor();
+		const highlightedText = richTextEditor.body.locator('mark', { hasText: 'Highlighted' });
+		await expect(highlightedText).toHaveCSS('color', 'rgb(255, 0, 0)');
+		await expect(highlightedText).toHaveCSS('background-color', 'rgb(255, 255, 0)');
+
+		// Trigger TinyMCE's save path without changing the highlighted text.
+		const editableLine = richTextEditor.body.getByText('Edit this line', { exact: true });
+		await editableLine.click();
+		await mainWindow.keyboard.press('End');
+		await mainWindow.keyboard.type('!');
+		await expect(editableLine).toHaveText('Edit this line!');
+
+		const savedMarkdown = await (await editor.showMarkdownEditor()).innerText();
+		expect(savedMarkdown).toContain('<span style="color: red; background-color: yellow;">==Highlighted==</span>');
+	});
+
 	test('should watch resources for changes when opened with ctrl+click', async ({ electronApp, mainWindow }) => {
 		const mainScreen = await new MainScreen(mainWindow).setup();
 		await mainScreen.createNewNote('Testing!');

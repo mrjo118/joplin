@@ -1,1 +1,1 @@
-Text <span style="color: #fff000;">Text</span>
+Text <span style="color: #fff000;">Text</span> <span style="background-color: #fff000;">Background</span> <span style="color: #123456; background-color: #abcdef;">Foreground and background</span> <span style="color: #654321; background-color: #fedcba;">==Highlighted==</span> <span style="color: #135790;"><span style="background-color: #fdb975;">==ProseMirror highlight==</span></span>

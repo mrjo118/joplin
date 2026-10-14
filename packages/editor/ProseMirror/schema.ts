@@ -190,10 +190,6 @@ const marks = {
 		parseDOM: [{ tag: 'sup' }],
 		toDOM: () => domOutputSpecs.sup,
 	},
-	mark: {
-		parseDOM: [{ tag: 'mark' }],
-		toDOM: () => domOutputSpecs.mark,
-	},
 	color: {
 		inclusive: false,
 		parseDOM: [{
@@ -210,6 +206,29 @@ const marks = {
 			result.style.color = node.attrs.color;
 			return result;
 		},
+	},
+	backgroundColor: {
+		inclusive: false,
+		parseDOM: [{
+			style: 'background-color',
+			getAttrs: (styleValue: string) => {
+				return { backgroundColor: styleValue };
+			},
+		}],
+		attrs: {
+			backgroundColor: { validate: 'string' },
+		},
+		toDOM: node => {
+			const result = document.createElement('span');
+			result.style.backgroundColor = node.attrs.backgroundColor;
+			return result;
+		},
+	},
+	// Keep colour marks outside highlight marks when serializing. This allows the
+	// HTML-to-Markdown converter to retain the colour around the ==highlight==.
+	mark: {
+		parseDOM: [{ tag: 'mark' }],
+		toDOM: () => domOutputSpecs.mark,
 	},
 	link: {
 		attrs: {
