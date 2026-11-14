@@ -87,7 +87,7 @@ import { EditorType } from '../../NoteEditor/types';
 import { Button, IconButton, Portal, ProgressBar } from 'react-native-paper';
 import { makeIsolatedShareCacheDirectory } from '../../../utils/ShareUtils';
 import shareFile from '../../../utils/shareFile';
-import { printToFileAsync } from 'expo-print';
+import { printAsync, printToFileAsync } from 'expo-print';
 import printHtmlInSandboxedIframe from '../../../utils/printHtmlInSandboxedIframe';
 import { fileUriToPath } from '@joplin/utils/url';
 import InteropService from '@joplin/lib/services/interop/InteropService';
@@ -1365,7 +1365,16 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			if (format === 'print') {
 				const html = await shim.fsDriver().readFile(htmlPath, 'utf8');
 				if (task.cancelled) return;
-				printHtmlInSandboxedIframe(html);
+				if (Platform.OS === 'web') {
+					printHtmlInSandboxedIframe(html);
+				} else {
+					try {
+						await printAsync({ html });
+					} catch (error) {
+						// iOS rejects when the user dismisses the print sheet.
+						if (error?.code !== 'ERR_PRINT_INCOMPLETE') throw error;
+					}
+				}
 				return;
 			}
 			let fileToShare = htmlPath;
@@ -1415,8 +1424,9 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			_('Choose an option'), [
 				{ text: _('Plain text'), id: 'plainText' },
 				{ text: _('HTML'), id: 'html' },
-				// On web, Expo Print opens the print dialog instead of returning a PDF file to share. So offer a print option instead
-				...(isWeb ? [{ text: _('Print'), id: 'print' as const }] : [{ text: _('PDF'), id: 'pdf' as const }]),
+				// On web, Expo Print opens the print dialog instead of returning a PDF file to share, so it is not suitable
+				...(isWeb ? [] : [{ text: _('PDF'), id: 'pdf' as const }]),
+				{ text: _('Print'), id: 'print' },
 				{ text: _('Cancel'), id: 'cancel', style: 'cancel' },
 			],
 		);

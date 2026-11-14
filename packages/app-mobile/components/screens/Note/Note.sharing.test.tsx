@@ -29,11 +29,11 @@ import useVisiblePluginEditorViewIds from '@joplin/lib/hooks/plugins/useVisibleP
 import InteropService from '@joplin/lib/services/interop/InteropService';
 import { ExportModuleOutputFormat } from '@joplin/lib/services/interop/types';
 import shareFile from '../../../utils/shareFile';
-import { printToFileAsync } from 'expo-print';
+import { printAsync, printToFileAsync } from 'expo-print';
 
 jest.mock('@joplin/lib/hooks/plugins/useVisiblePluginEditorViewIds', () => jest.fn((): string[] => []));
 jest.mock('../../../utils/shareFile', () => jest.fn().mockResolvedValue(undefined));
-jest.mock('expo-print', () => ({ printToFileAsync: jest.fn() }));
+jest.mock('expo-print', () => ({ printAsync: jest.fn(), printToFileAsync: jest.fn() }));
 
 const mockUseVisiblePluginEditorViewIds = useVisiblePluginEditorViewIds as jest.MockedFunction<typeof useVisiblePluginEditorViewIds>;
 
@@ -62,7 +62,7 @@ const WrappedNoteScreen: React.FC<WrapperProps> = props => {
 	</TestProviderStack>;
 };
 
-const makeShareDialogs = (choice: 'plainText'|'html'|'pdf'|'cancel') => {
+const makeShareDialogs = (choice: 'plainText'|'html'|'pdf'|'print'|'cancel') => {
 	const showMenu = jest.fn(async () => choice);
 	return { dialogs: { showMenu } as unknown as DialogControl, showMenu };
 };
@@ -166,6 +166,7 @@ describe('screens/Note/Note.sharing', () => {
 	afterEach(() => {
 		jest.restoreAllMocks();
 		jest.mocked(shareFile).mockClear();
+		jest.mocked(printAsync).mockReset();
 		jest.mocked(printToFileAsync).mockReset();
 	});
 
@@ -195,7 +196,7 @@ describe('screens/Note/Note.sharing', () => {
 		return { buttons, options, removeFile, shareDir, unmount };
 	};
 
-	it('offers plain text, HTML, and PDF, and does not share when cancelled', async () => {
+	it('offers plain text, HTML, PDF, and Print, and does not share when cancelled', async () => {
 		await openNewNote({ title: 'Share test', body: 'Short **body**' });
 		const { dialogs, showMenu } = makeShareDialogs('cancel');
 		const nativeShare = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
@@ -210,6 +211,7 @@ describe('screens/Note/Note.sharing', () => {
 				expect.objectContaining({ text: 'Plain text', id: 'plainText' }),
 				expect.objectContaining({ text: 'HTML', id: 'html' }),
 				expect.objectContaining({ text: 'PDF', id: 'pdf' }),
+				expect.objectContaining({ text: 'Print', id: 'print' }),
 				expect.objectContaining({ text: 'Cancel', id: 'cancel' }),
 			]));
 		});
@@ -325,6 +327,39 @@ describe('screens/Note/Note.sharing', () => {
 		expect(basename(pdfPath)).toBe('PDF _ note_.pdf');
 		expect(copyFile).toHaveBeenCalledWith(printedPath, pdfPath);
 		expect(unlinkFile).toHaveBeenCalledWith(printedPath);
+		unmount();
+	});
+
+	it.each([false, true])('opens the native print sheet for exported HTML (cancelled: %s)', async cancelled => {
+		const noteId = await openNewNote({ title: 'Print note', body: 'Printable **body**' });
+		const { dialogs } = makeShareDialogs('print');
+		const html = '<!DOCTYPE html><html><body>Printable body</body></html>';
+		const exportHtml = jest.spyOn(InteropService.instance(), 'export').mockImplementation(async options => {
+			await shim.fsDriver().writeFile(options.path, html, 'utf8');
+			return { warnings: [] };
+		});
+		if (cancelled) {
+			jest.mocked(printAsync).mockRejectedValue(Object.assign(new Error('Printing did not complete'), { code: 'ERR_PRINT_INCOMPLETE' }));
+		} else {
+			jest.mocked(printAsync).mockResolvedValue();
+		}
+		const showErrorDialog = jest.spyOn(shim, 'showErrorDialog').mockResolvedValue();
+		const removeDir = jest.spyOn(shim.fsDriver(), 'remove');
+		const { unmount } = render(<WrappedNoteScreen dialogs={dialogs}/>);
+
+		await openNoteActionsMenu();
+		fireEvent.press(await screen.findByText('Share'));
+
+		await waitFor(() => expect(printAsync).toHaveBeenCalledWith({ html }));
+		expect(exportHtml).toHaveBeenCalledWith(expect.objectContaining({
+			sourceNoteIds: [noteId],
+			packIntoSingleFile: true,
+			shouldEmbedOnlyImages: true,
+		}));
+		expect(printToFileAsync).not.toHaveBeenCalled();
+		expect(shareFile).not.toHaveBeenCalled();
+		await waitFor(() => expect(removeDir).toHaveBeenCalledWith(dirname(exportHtml.mock.calls[0][0].path)));
+		expect(showErrorDialog).not.toHaveBeenCalled();
 		unmount();
 	});
 
