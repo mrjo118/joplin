@@ -29,9 +29,11 @@ import useVisiblePluginEditorViewIds from '@joplin/lib/hooks/plugins/useVisibleP
 import InteropService from '@joplin/lib/services/interop/InteropService';
 import { ExportModuleOutputFormat } from '@joplin/lib/services/interop/types';
 import shareFile from '../../../utils/shareFile';
+import { printToFileAsync } from 'expo-print';
 
 jest.mock('@joplin/lib/hooks/plugins/useVisiblePluginEditorViewIds', () => jest.fn((): string[] => []));
 jest.mock('../../../utils/shareFile', () => jest.fn().mockResolvedValue(undefined));
+jest.mock('expo-print', () => ({ printToFileAsync: jest.fn() }));
 
 const mockUseVisiblePluginEditorViewIds = useVisiblePluginEditorViewIds as jest.MockedFunction<typeof useVisiblePluginEditorViewIds>;
 
@@ -60,7 +62,7 @@ const WrappedNoteScreen: React.FC<WrapperProps> = props => {
 	</TestProviderStack>;
 };
 
-const makeShareDialogs = (choice: 'plainText'|'html'|'cancel') => {
+const makeShareDialogs = (choice: 'plainText'|'html'|'pdf'|'cancel') => {
 	const showMenu = jest.fn(async () => choice);
 	return { dialogs: { showMenu } as unknown as DialogControl, showMenu };
 };
@@ -164,6 +166,7 @@ describe('screens/Note/Note.sharing', () => {
 	afterEach(() => {
 		jest.restoreAllMocks();
 		jest.mocked(shareFile).mockClear();
+		jest.mocked(printToFileAsync).mockReset();
 	});
 
 	const openHtmlShareWithWarnings = async () => {
@@ -192,7 +195,7 @@ describe('screens/Note/Note.sharing', () => {
 		return { buttons, options, removeFile, shareDir, unmount };
 	};
 
-	it('offers plain text and HTML, and does not share when cancelled', async () => {
+	it('offers plain text, HTML, and PDF, and does not share when cancelled', async () => {
 		await openNewNote({ title: 'Share test', body: 'Short **body**' });
 		const { dialogs, showMenu } = makeShareDialogs('cancel');
 		const nativeShare = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
@@ -206,6 +209,7 @@ describe('screens/Note/Note.sharing', () => {
 			expect(showMenu).toHaveBeenCalledWith('Choose an option', expect.arrayContaining([
 				expect.objectContaining({ text: 'Plain text', id: 'plainText' }),
 				expect.objectContaining({ text: 'HTML', id: 'html' }),
+				expect.objectContaining({ text: 'PDF', id: 'pdf' }),
 				expect.objectContaining({ text: 'Cancel', id: 'cancel' }),
 			]));
 		});
@@ -276,6 +280,7 @@ describe('screens/Note/Note.sharing', () => {
 				format: ExportModuleOutputFormat.Html,
 				sourceNoteIds: [noteId],
 				decryptLockedNotes: true,
+				shouldEmbedOnlyImages: false,
 			}));
 			expect(shareFile).toHaveBeenCalledWith(expect.any(String), 'text/html');
 		});
@@ -286,6 +291,40 @@ describe('screens/Note/Note.sharing', () => {
 		expect(removeFile).not.toHaveBeenCalledWith(dirname(exportPath));
 		expect(screen.queryByText('Exporting...')).toBeNull();
 		expect(nativeShare).not.toHaveBeenCalled();
+		unmount();
+	});
+
+	it('exports HTML and shares a PDF with the note title', async () => {
+		const noteId = await openNewNote({ title: 'PDF / note?', body: 'Printable **body**' });
+		const { dialogs } = makeShareDialogs('pdf');
+		const html = '<!DOCTYPE html><html><body>Printable body</body></html>';
+		const exportHtml = jest.spyOn(InteropService.instance(), 'export').mockImplementation(async options => {
+			await shim.fsDriver().writeFile(options.path, html, 'utf8');
+			return { warnings: [] };
+		});
+		const printedUri = 'file:///cache/printed.pdf';
+		const printedPath = '/cache/printed.pdf';
+		jest.mocked(printToFileAsync).mockResolvedValue({ uri: printedUri, numberOfPages: 1 });
+		const copyFile = jest.spyOn(shim.fsDriver(), 'copy').mockResolvedValue();
+		const unlinkFile = jest.spyOn(shim.fsDriver(), 'unlink').mockResolvedValue();
+		const { unmount } = render(<WrappedNoteScreen dialogs={dialogs}/>);
+
+		await openNoteActionsMenu();
+		fireEvent.press(await screen.findByText('Share'));
+
+		await waitFor(() => expect(shareFile).toHaveBeenCalledWith(expect.any(String), 'application/pdf'));
+		const pdfPath = jest.mocked(shareFile).mock.calls[0][0];
+		expect(exportHtml).toHaveBeenCalledWith(expect.objectContaining({
+			format: ExportModuleOutputFormat.Html,
+			sourceNoteIds: [noteId],
+			packIntoSingleFile: true,
+			shouldEmbedOnlyImages: true,
+		}));
+		expect(basename(exportHtml.mock.calls[0][0].path)).toBe('PDF _ note_.html');
+		expect(printToFileAsync).toHaveBeenCalledWith({ html });
+		expect(basename(pdfPath)).toBe('PDF _ note_.pdf');
+		expect(copyFile).toHaveBeenCalledWith(printedPath, pdfPath);
+		expect(unlinkFile).toHaveBeenCalledWith(printedPath);
 		unmount();
 	});
 

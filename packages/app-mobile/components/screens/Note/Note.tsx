@@ -87,6 +87,8 @@ import { EditorType } from '../../NoteEditor/types';
 import { Button, IconButton, Portal, ProgressBar } from 'react-native-paper';
 import { makeIsolatedShareCacheDirectory } from '../../../utils/ShareUtils';
 import shareFile from '../../../utils/shareFile';
+import { printToFileAsync } from 'expo-print';
+import { fileUriToPath } from '@joplin/utils/url';
 import InteropService from '@joplin/lib/services/interop/InteropService';
 import { ExportModuleOutputFormat, FileSystemItem } from '@joplin/lib/services/interop/types';
 import NotePositionService from '@joplin/lib/services/NotePositionService';
@@ -1316,7 +1318,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		this.setState({ exportInProgress: false });
 	};
 
-	private async shareHtmlFile() {
+	private async shareExportedFile(format: 'html'|'pdf') {
 		const task: ExportTask = { cancelled: false };
 		this.exportTask_ = task;
 		this.setState({ exportInProgress: true });
@@ -1333,10 +1335,11 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 
 			shareDir = await makeIsolatedShareCacheDirectory();
 			if (task.cancelled) return;
-			const fileToShare = `${shareDir}/${friendlySafeFilename(savedNote.title)}.html`;
+			const filename = friendlySafeFilename(savedNote.title);
+			const htmlPath = `${shareDir}/${filename}.html`;
 
 			const exportResult = await InteropService.instance().export({
-				path: fileToShare,
+				path: htmlPath,
 				format: ExportModuleOutputFormat.Html,
 				target: FileSystemItem.File,
 				sourceNoteIds: [savedNote.id],
@@ -1344,10 +1347,11 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 				decryptLockedNotes: true,
 				// Export runs in the app context, so renderer content scripts must not run here.
 				packIntoSingleFile: true,
+				shouldEmbedOnlyImages: format === 'pdf',
 			});
 			if (task.cancelled) return;
-			this.setState({ exportInProgress: false });
 			if (exportResult.warnings.length) {
+				this.setState({ exportInProgress: false });
 				const shouldShare = await new Promise<boolean>(resolve => {
 					this.props.dialogs.prompt('', _('Some content may be missing from the note. Do you still want to share it?'), [
 						{ text: _('No'), style: 'cancel', onPress: () => resolve(false) },
@@ -1357,12 +1361,35 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 				if (!shouldShare) return;
 			}
 			if (task.cancelled) return;
+			let fileToShare = htmlPath;
+			let mime = 'text/html';
+			if (format === 'pdf') {
+				this.setState({ exportInProgress: true });
+				const html = await shim.fsDriver().readFile(htmlPath, 'utf8');
+				if (task.cancelled) return;
+				const { uri } = await printToFileAsync({ html });
+				const printedPath = fileUriToPath(uri);
+				try {
+					if (task.cancelled) return;
+					fileToShare = `${shareDir}/${filename}.pdf`;
+					await shim.fsDriver().copy(printedPath, fileToShare);
+				} finally {
+					try {
+						await shim.fsDriver().unlink(printedPath);
+					} catch (error) {
+						logger.warn('Unable to remove temporary PDF:', error);
+					}
+				}
+				if (task.cancelled) return;
+				mime = 'application/pdf';
+			}
+			this.setState({ exportInProgress: false });
 			this.exportTask_ = null;
-			await shareFile(fileToShare, 'text/html');
+			await shareFile(fileToShare, mime);
 			shareCallReturned = true;
 		} catch (e) {
 			if (!task.cancelled) {
-				logger.error('Unable to share note as HTML:', e);
+				logger.error(`Unable to share note as ${format.toUpperCase()}:`, e);
 				void shim.showErrorDialog(_('Unable to share note data. Reason: %s', e.toString()));
 			}
 		} finally {
@@ -1376,16 +1403,18 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	}
 
 	private async share_onPress() {
-		const shareFormat = await this.props.dialogs.showMenu<'plainText'|'html'|'cancel'>(
+		const shareFormat = await this.props.dialogs.showMenu<'plainText'|'html'|'pdf'|'cancel'>(
 			_('Choose an option'), [
 				{ text: _('Plain text'), id: 'plainText' },
 				{ text: _('HTML'), id: 'html' },
+				// On web, Expo Print opens the print dialog instead of returning a PDF file to share.
+				...(Platform.OS === 'web' ? [] : [{ text: _('PDF'), id: 'pdf' as const }]),
 				{ text: _('Cancel'), id: 'cancel', style: 'cancel' },
 			],
 		);
 		if (shareFormat === 'cancel') return;
-		if (shareFormat === 'html') {
-			await this.shareHtmlFile();
+		if (shareFormat === 'html' || shareFormat === 'pdf') {
+			await this.shareExportedFile(shareFormat);
 			return;
 		}
 
