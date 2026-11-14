@@ -88,6 +88,7 @@ import { Button, IconButton, Portal, ProgressBar } from 'react-native-paper';
 import { makeIsolatedShareCacheDirectory } from '../../../utils/ShareUtils';
 import shareFile from '../../../utils/shareFile';
 import { printToFileAsync } from 'expo-print';
+import printHtmlInSandboxedIframe from '../../../utils/printHtmlInSandboxedIframe';
 import { fileUriToPath } from '@joplin/utils/url';
 import InteropService from '@joplin/lib/services/interop/InteropService';
 import { ExportModuleOutputFormat, FileSystemItem } from '@joplin/lib/services/interop/types';
@@ -1318,7 +1319,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 		this.setState({ exportInProgress: false });
 	};
 
-	private async shareExportedFile(format: 'html'|'pdf') {
+	private async shareExportedFile(format: 'html'|'pdf'|'print') {
 		const task: ExportTask = { cancelled: false };
 		this.exportTask_ = task;
 		this.setState({ exportInProgress: true });
@@ -1347,7 +1348,7 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 				decryptLockedNotes: true,
 				// Export runs in the app context, so renderer content scripts must not run here.
 				packIntoSingleFile: true,
-				shouldEmbedOnlyImages: format === 'pdf',
+				shouldEmbedOnlyImages: format !== 'html',
 			});
 			if (task.cancelled) return;
 			if (exportResult.warnings.length) {
@@ -1361,6 +1362,12 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 				if (!shouldShare) return;
 			}
 			if (task.cancelled) return;
+			if (format === 'print') {
+				const html = await shim.fsDriver().readFile(htmlPath, 'utf8');
+				if (task.cancelled) return;
+				printHtmlInSandboxedIframe(html);
+				return;
+			}
 			let fileToShare = htmlPath;
 			let mime = 'text/html';
 			if (format === 'pdf') {
@@ -1403,17 +1410,18 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 	}
 
 	private async share_onPress() {
-		const shareFormat = await this.props.dialogs.showMenu<'plainText'|'html'|'pdf'|'cancel'>(
+		const isWeb = Platform.OS === 'web';
+		const shareFormat = await this.props.dialogs.showMenu<'plainText'|'html'|'pdf'|'print'|'cancel'>(
 			_('Choose an option'), [
 				{ text: _('Plain text'), id: 'plainText' },
 				{ text: _('HTML'), id: 'html' },
-				// On web, Expo Print opens the print dialog instead of returning a PDF file to share.
-				...(Platform.OS === 'web' ? [] : [{ text: _('PDF'), id: 'pdf' as const }]),
+				// On web, Expo Print opens the print dialog instead of returning a PDF file to share. So offer a print option instead
+				...(isWeb ? [{ text: _('Print'), id: 'print' as const }] : [{ text: _('PDF'), id: 'pdf' as const }]),
 				{ text: _('Cancel'), id: 'cancel', style: 'cancel' },
 			],
 		);
-		if (shareFormat === 'cancel') return;
-		if (shareFormat === 'html' || shareFormat === 'pdf') {
+		if (!shareFormat || shareFormat === 'cancel') return;
+		if (shareFormat === 'html' || shareFormat === 'pdf' || shareFormat === 'print') {
 			await this.shareExportedFile(shareFormat);
 			return;
 		}
@@ -1633,17 +1641,14 @@ class NoteScreenComponent extends BaseScreenComponent<ComponentProps, State> imp
 			});
 		}
 
-		const shareSupported = Platform.OS !== 'web' || !!navigator.share;
-		if (shareSupported) {
-			output.push({
-				title: _('Share'),
-				icon: 'material share-outline',
-				onPress: () => {
-					void this.share_onPress();
-				},
-				disabled: readOnly || (isNoteLockEnabled() && !!note.is_locked && (!this.props.noteLockSessionUnlocked || !this.state.noteLockKey)),
-			});
-		}
+		output.push({
+			title: _('Share'),
+			icon: 'material share-outline',
+			onPress: () => {
+				void this.share_onPress();
+			},
+			disabled: readOnly || (isNoteLockEnabled() && !!note.is_locked && (!this.props.noteLockSessionUnlocked || !this.state.noteLockKey)),
+		});
 
 		if (VoiceTyping.supported()) {
 			output.push({
